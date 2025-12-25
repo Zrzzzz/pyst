@@ -697,6 +697,10 @@ function toggleDetail(rowId) {
 }
 
 // 存储当前编辑的数据
+// 全局存储每个股票的修改后涨幅数据
+// 格式: { 'tsCode': { 1: 5.0, 2: 3.5, ... } }  // key是T+n的天数，value是修改后的当日涨幅
+const stockModifiedChanges = {};
+
 let currentEditData = {
     tsCode: null,
     tPlusDay: null,
@@ -772,33 +776,38 @@ function saveModification() {
 function recalculateTPlusData(modifiedDailyChange) {
     const { tsCode, tPlusDay, limitUpPct, baseDays, maxTPlusDays, threshold, stockPrices, indexPrices, lastPrice } = currentEditData;
 
-    // 获取T+tPlusDay前一天的价格
-    let prevPrice;
-    if (tPlusDay === 1) {
-        prevPrice = lastPrice;
-    } else {
-        // 生成T+tPlusDay-1的价格
-        const prevExtraPrices = generateLimitUpPrices(lastPrice, limitUpPct, tPlusDay - 1);
-        prevPrice = prevExtraPrices[tPlusDay - 2];
+    // 初始化该股票的修改数据
+    if (!stockModifiedChanges[tsCode]) {
+        stockModifiedChanges[tsCode] = {};
     }
 
-    // 计算修改后的价格（基于前一天价格和当日涨幅）
-    const modifiedPrice = prevPrice * (1 + modifiedDailyChange / 100);
+    // 保存本次修改的涨幅
+    stockModifiedChanges[tsCode][tPlusDay] = modifiedDailyChange;
 
-    // 生成从修改点开始的新价格序列
-    let currentPrice = modifiedPrice;
-    const newExtraPrices = [modifiedPrice];
+    // 生成完整的T+1到T+maxTPlusDays的价格序列
+    const allPrices = []; // 索引0对应T+1，索引1对应T+2，以此类推
 
-    // 对于 T+tPlusDay 之后的天数，继续涨停
-    for (let i = tPlusDay + 1; i <= maxTPlusDays; i++) {
-        currentPrice = currentPrice * (1 + limitUpPct / 100);
-        newExtraPrices.push(parseFloat(currentPrice.toFixed(2)));
+    for (let i = 1; i <= maxTPlusDays; i++) {
+        const prevPrice = i === 1 ? lastPrice : allPrices[i - 2];
+
+        // 检查该天是否有修改过的涨幅
+        let dailyChange;
+        if (stockModifiedChanges[tsCode][i] !== undefined) {
+            // 使用修改后的涨幅
+            dailyChange = stockModifiedChanges[tsCode][i];
+        } else {
+            // 使用默认涨停幅度
+            dailyChange = limitUpPct;
+        }
+
+        const price = parseFloat((prevPrice * (1 + dailyChange / 100)).toFixed(2));
+        allPrices.push(price);
     }
 
-    // 重新计算 T+tPlusDay 到 T+maxTPlusDays 的数据
-    for (let i = tPlusDay; i <= maxTPlusDays; i++) {
-        // 生成到第 i 天的价格序列
-        const extraPrices = newExtraPrices.slice(0, i - tPlusDay + 1);
+    // 重新计算 T+1 到 T+maxTPlusDays 的数据
+    for (let i = 1; i <= maxTPlusDays; i++) {
+        // 构建到第 i 天的完整价格序列（用于计算偏离值）
+        const extraPrices = allPrices.slice(0, i);
 
         // 计算偏离值
         const result = calculateTrailingDeviation(stockPrices, indexPrices, baseDays, extraPrices);
@@ -811,15 +820,18 @@ function recalculateTPlusData(modifiedDailyChange) {
 
             // 计算当日涨幅
             let dailyChangePercent = 0;
-            if (i === tPlusDay) {
-                // 修改的那一天，当日涨幅 = (修改后的价格 - 前一天价格) / 前一天价格 * 100
-                const prevPrice = tPlusDay === 1 ? lastPrice : newExtraPrices[0];
-                dailyChangePercent = ((extraPrices[0] - prevPrice) / prevPrice) * 100;
+            const currentPrice = extraPrices[extraPrices.length - 1]; // 当前天的价格
+            let prevDayPrice;
+
+            if (i === 1) {
+                // T+1的前一天是T+0（lastPrice）
+                prevDayPrice = lastPrice;
             } else {
-                // 后续天数，当日涨幅 = (T+n收盘价 - T+n-1收盘价) / T+n-1收盘价 * 100
-                const prevPrice = extraPrices[i - tPlusDay - 1];
-                dailyChangePercent = ((extraPrices[i - tPlusDay] - prevPrice) / prevPrice) * 100;
+                // 其他天数的前一天价格
+                prevDayPrice = extraPrices[extraPrices.length - 2];
             }
+
+            dailyChangePercent = ((currentPrice - prevDayPrice) / prevDayPrice) * 100;
 
             // 更新UI
             const currentCloseElement = document.getElementById(`current-close-${tsCode}-${i}`);
@@ -864,7 +876,7 @@ function recalculateTPlusData(modifiedDailyChange) {
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('editModal');
     if (modal) {
-        modal.addEventListener('click', function(event) {
+        modal.addEventListener('mousedown', function(event) {
             if (event.target === modal) {
                 closeEditModal();
             }
