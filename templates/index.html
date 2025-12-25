@@ -1,0 +1,472 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 股票异动监控{% endblock %}
+
+{% block extra_css %}
+<style>
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-secondary);
+    }
+
+    .loading-spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border-color);
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+        padding: 20px;
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        border-left: 4px solid var(--danger-color);
+        border-radius: 8px;
+        color: #7f1d1d;
+        margin: 20px 0;
+    }
+</style>
+<style>
+    .section {
+        margin-bottom: 50px;
+        animation: fadeIn 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .section-title {
+        color: var(--text-primary);
+        margin-bottom: 20px;
+        font-size: 1.5em;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .info-box {
+        margin-bottom: 20px;
+        padding: 16px;
+        background: linear-gradient(135deg, #dbeafe 0%, #e0f2fe 100%);
+        border-left: 4px solid var(--info-color);
+        border-radius: 8px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .info-box p {
+        color: var(--info-color);
+        margin: 0;
+        font-size: 0.95em;
+        line-height: 1.5;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: 8px;
+        box-shadow: var(--shadow-md);
+    }
+
+    .market-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        background: var(--bg-lighter);
+        border-radius: 6px;
+        font-size: 0.85em;
+        font-weight: 500;
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+
+    .market-badge:hover {
+        background: var(--primary-light);
+        color: white;
+        border-color: var(--primary-light);
+    }
+
+    .limit-up-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-radius: 6px;
+        font-weight: 600;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+        font-size: 0.85em;
+    }
+
+    .date-range {
+        font-size: 0.85em;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+
+    .divider {
+        margin: 50px 0;
+        border: none;
+        border-top: 2px solid var(--border-color);
+        opacity: 0.5;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+        font-size: 3em;
+        margin-bottom: 10px;
+        opacity: 0.5;
+    }
+
+    .metrics-cell {
+        font-size: 0.85em;
+        line-height: 1.5;
+        background: var(--bg-lighter);
+        padding: 10px !important;
+        border-radius: 4px;
+    }
+
+    .metrics-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+
+    .metrics-label {
+        font-weight: 500;
+        color: var(--text-secondary);
+        min-width: 60px;
+    }
+
+    .metrics-value {
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .metrics-divider {
+        margin: 6px 0;
+        padding: 6px 0;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .expand-btn {
+        cursor: pointer;
+        color: var(--primary-color);
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+
+    .expand-btn:hover {
+        background: var(--primary-light);
+        color: white;
+    }
+
+    .detail-row {
+        display: none;
+        background: var(--bg-lighter);
+    }
+
+    .detail-row.show {
+        display: table-row;
+    }
+
+    .detail-content {
+        padding: 20px;
+    }
+
+    .t-plus-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 10px;
+    }
+
+    .t-plus-card {
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.2s ease;
+    }
+
+    .t-plus-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .t-plus-title {
+        font-weight: 700;
+        color: var(--primary-color);
+        margin-bottom: 8px;
+        font-size: 0.95em;
+    }
+
+    .t-plus-item {
+        display: flex;
+        justify-content: space-between;
+        margin: 4px 0;
+        font-size: 0.85em;
+    }
+
+    .t-plus-label {
+        color: var(--text-secondary);
+    }
+
+    .t-plus-value {
+        font-weight: 600;
+    }
+
+    .abnormal-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75em;
+        font-weight: 600;
+    }
+
+    .abnormal-badge.yes {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .abnormal-badge.no {
+        background: #d1fae5;
+        color: #059669;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section">
+    <h2 class="section-title">📊 10日偏离值榜 Top 30</h2>
+
+    <div class="info-box">
+        <p>
+            💡 <strong>偏离值</strong> = 股票涨幅(%) - 指数涨幅(%) | 正值表示股票强于指数，负值表示股票弱于指数
+        </p>
+    </div>
+
+    <div id="table-10-container" class="table-wrapper">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>加载中...</p>
+        </div>
+    </div>
+</div>
+
+<hr class="divider">
+
+<div class="section">
+    <h2 class="section-title">📈 30日偏离值榜 Top 30</h2>
+
+    <div class="info-box">
+        <p>
+            💡 <strong>偏离值</strong> = 股票涨幅(%) - 指数涨幅(%) | 正值表示股票强于指数，负值表示股票弱于指数
+        </p>
+    </div>
+
+    <div id="table-30-container" class="table-wrapper">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <p>加载中...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// 页面加载时获取数据
+document.addEventListener('DOMContentLoaded', function() {
+    loadBothTables();
+});
+
+async function loadBothTables() {
+    try {
+        const response = await fetch('/api/stocks/both');
+        const result = await response.json();
+
+        if (result.code === 0) {
+            renderTable('table-10-container', result.data.stocks_10, '10日偏离', 'period_10');
+            renderTable('table-30-container', result.data.stocks_30, '30日偏离', 'period_30');
+        } else {
+            showError('table-10-container', result.message);
+            showError('table-30-container', result.message);
+        }
+    } catch (error) {
+        console.error('加载数据失败:', error);
+        showError('table-10-container', '加载数据失败: ' + error.message);
+        showError('table-30-container', '加载数据失败: ' + error.message);
+    }
+}
+
+function renderTable(containerId, data, periodLabel, period) {
+    const container = document.getElementById(containerId);
+
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>暂无数据</p></div>';
+        return;
+    }
+
+    let html = '<table><thead><tr>';
+    html += '<th style="width: 60px;">排名</th>';
+    html += '<th>股票代码</th>';
+    html += '<th>股票名称</th>';
+    html += '<th>市场类型</th>';
+    html += '<th>累计涨幅</th>';
+    html += '<th>指数涨幅</th>';
+    html += `<th>${periodLabel}</th>`;
+    html += '<th>T+1/T+2偏离</th>';
+    html += '<th>交易日周期</th>';
+    html += '<th>日期范围</th>';
+    html += '<th style="width: 80px;">详情</th>';
+    html += '</tr></thead><tbody>';
+
+    data.forEach((item, index) => {
+        const priceChangeClass = item.price_change_pct >= 0 ? 'positive' : 'negative';
+        const indexChangeClass = item.index_change_pct >= 0 ? 'positive' : 'negative';
+        const deviationClass = item.deviation >= 0 ? 'positive' : 'negative';
+        const rowId = `row-${period}-${index}`;
+
+        // 获取 t+1 和 t+2 的数据
+        const t1Data = item['t+1'] || {};
+        const t2Data = item['t+2'] || {};
+
+        const t1DeviationClass = t1Data.deviation >= 0 ? 'positive' : 'negative';
+        const t2DeviationClass = t2Data.deviation >= 0 ? 'positive' : 'negative';
+        const t1AbnormalClass = t1Data.is_abnormal ? 'yes' : 'no';
+        const t2AbnormalClass = t2Data.is_abnormal ? 'yes' : 'no';
+        const t1AbnormalText = t1Data.is_abnormal ? '✓' : '✗';
+        const t2AbnormalText = t2Data.is_abnormal ? '✓' : '✗';
+
+        // 主数据行
+        html += `<tr data-market="${item.market}" data-stock-prices='${JSON.stringify(item.stock_prices)}' data-index-prices='${JSON.stringify(item.index_prices)}' data-period="${period}">`;
+        html += `<td class="rank">${index + 1}</td>`;
+        html += `<td style="font-weight: 600; color: var(--primary-color);">${item.ts_code}</td>`;
+        html += `<td style="font-weight: 500;">${item.name}</td>`;
+        html += `<td><span class="market-badge">${item.market}</span></td>`;
+        html += `<td><span class="${priceChangeClass}">${item.price_change_pct.toFixed(2)}%</span></td>`;
+        html += `<td><span class="${indexChangeClass}">${item.index_change_pct.toFixed(2)}%</span></td>`;
+        html += `<td><span class="${deviationClass}" style="font-weight: 700; font-size: 1.05em;">${item.deviation.toFixed(2)}%</span></td>`;
+        html += `<td class="metrics-cell">
+            <div class="metrics-row">
+                <span class="metrics-label">T+1:</span>
+                <span class="metrics-value ${t1DeviationClass}">${t1Data.deviation ? t1Data.deviation.toFixed(2) : 'N/A'}%</span>
+                <span class="abnormal-badge ${t1AbnormalClass}" style="margin-left: 4px;">${t1AbnormalText}</span>
+            </div>
+            <div class="metrics-row">
+                <span class="metrics-label">T+2:</span>
+                <span class="metrics-value ${t2DeviationClass}">${t2Data.deviation ? t2Data.deviation.toFixed(2) : 'N/A'}%</span>
+                <span class="abnormal-badge ${t2AbnormalClass}" style="margin-left: 4px;">${t2AbnormalText}</span>
+            </div>
+        </td>`;
+        html += `<td style="text-align: center; font-weight: 600; color: var(--primary-color);">${item.deviation_date_range || 'N/A'}</td>`;
+        html += `<td class="date-range">${item.low_date || 'N/A'} ~ ${item.end_date || 'N/A'}</td>`;
+        html += `<td style="text-align: center;"><span class="expand-btn" onclick="toggleDetail('${rowId}')">▼ 展开</span></td>`;
+        html += '</tr>';
+
+        // 详细信息行
+        html += `<tr class="detail-row" id="${rowId}">`;
+        html += `<td colspan="10">`;
+        html += `<div class="detail-content">`;
+        html += `<h4 style="margin-top: 0; color: var(--primary-color);">T+i 涨停模拟数据</h4>`;
+        html += renderTPlusData(item);
+        html += `</div>`;
+        html += `</td>`;
+        html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+
+
+function showError(containerId, message) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = `<div class="error-message">加载失败: ${message}</div>`;
+}
+
+function renderTPlusData(item) {
+    let html = '<div class="t-plus-grid">';
+
+    // 渲染 t+1 到 t+6
+    for (let i = 1; i <= 6; i++) {
+        const key = `t+${i}`;
+        const data = item[key];
+
+        if (data) {
+            const priceChangeClass = data.price_change_pct >= 0 ? 'positive' : 'negative';
+            const deviationClass = data.deviation >= 0 ? 'positive' : 'negative';
+            const abnormalClass = data.is_abnormal ? 'yes' : 'no';
+            const abnormalText = data.is_abnormal ? '是' : '否';
+
+            html += `<div class="t-plus-card">`;
+            html += `<div class="t-plus-title">${key.toUpperCase()}</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">最低价:</span>`;
+            html += `<span class="t-plus-value">${data.low_price ? data.low_price.toFixed(2) : 'N/A'}</span>`;
+            html += `</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">日期:</span>`;
+            html += `<span class="t-plus-value">${data.low_date || 'N/A'}</span>`;
+            html += `</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">涨停价:</span>`;
+            html += `<span class="t-plus-value">${data.end_zhangting_price ? data.end_zhangting_price.toFixed(2) : 'N/A'}</span>`;
+            html += `</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">涨幅:</span>`;
+            html += `<span class="t-plus-value ${priceChangeClass}">${data.price_change_pct ? data.price_change_pct.toFixed(2) : 'N/A'}%</span>`;
+            html += `</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">偏离值:</span>`;
+            html += `<span class="t-plus-value ${deviationClass}">${data.deviation ? data.deviation.toFixed(2) : 'N/A'}%</span>`;
+            html += `</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">异动:</span>`;
+            html += `<span class="abnormal-badge ${abnormalClass}">${abnormalText}</span>`;
+            html += `</div>`;
+            html += `</div>`;
+        }
+    }
+
+    html += '</div>';
+    return html;
+}
+
+function toggleDetail(rowId) {
+    const detailRow = document.getElementById(rowId);
+    const btn = event.target;
+
+    if (detailRow.classList.contains('show')) {
+        detailRow.classList.remove('show');
+        btn.textContent = '▼ 展开';
+    } else {
+        detailRow.classList.add('show');
+        btn.textContent = '▲ 收起';
+    }
+}
+</script>
+{% endblock %}
+

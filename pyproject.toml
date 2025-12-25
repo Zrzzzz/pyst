@@ -1,0 +1,21 @@
+[project]
+name = "pyst"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1.2",
+    "flask-cors>=4.0.0",
+    "python-dotenv>=1.2.1",
+    "sqlalchemy>=2.0.44",
+    "tqdm>=4.67.1",
+    "tushare>=1.4.24",
+    "apscheduler>=3.10.0",
+    "loguru>=0.7.0",
+    "gunicorn>=23.0.0",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
