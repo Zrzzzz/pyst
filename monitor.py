@@ -323,61 +323,6 @@ class StockMonitor:
                                 'pre_close': round(float(data['pre_close']), 2)
                             })
 
-                # 计算 t+1 到 t+6 的 low_price 和 low_date
-                # t+i 表示从第 i+1 个交易日开始到结束日期的数据
-                # 例如：过去 n 个交易日是 [d1, d2, ..., dn]
-                # t+1 是从 d2 开始到 dn 的数据（抛弃第一个交易日）
-                # t+2 是从 d3 开始到 dn 的数据（抛弃前两个交易日）
-                t_plus_data = {}
-                for i in range(1, 7):
-                    # t+i 从第 i 个位置开始（0-indexed，所以是 i）
-                    start_idx = i
-
-                    if start_idx < len(daily_list):
-                        # 获取从该日期开始到结束日期的所有数据
-                        prices_in_range = []
-
-                        for j in range(start_idx, len(daily_list)):
-                            prices_in_range.append((daily_list[j]['trade_date'], daily_list[j]['pre_close']))
-
-                        if prices_in_range:
-                            # 找最低的 pre_close
-                            min_item = min(prices_in_range, key=lambda x: float(x[1]))
-                            ti_low_date = min_item[0]
-                            ti_low_price = float(min_item[1])
-
-                            # 计算 t+i 的涨停价格（end_price 乘以 i 个涨停幅度）
-                            ti_zhangting_price = float(end_price)
-                            for _ in range(i):
-                                ti_zhangting_price = ti_zhangting_price * (1 + limit_up_pct / 100)
-                            ti_zhangting_price = round(ti_zhangting_price, 2)
-
-                            # 计算从该最低价到 t+i 涨停价格的涨幅
-                            ti_price_change_low_pct = None
-                            if ti_low_price > 0:
-                                ti_price_change_low_pct = round((ti_zhangting_price / ti_low_price - 1) * 100, 2)
-
-                            t_plus_data[f't+{i}'] = {
-                                'low_price': round(ti_low_price, 2),
-                                'low_date': ti_low_date,
-                                'end_zhangting_price': ti_zhangting_price,
-                                'price_change_low_pct': ti_price_change_low_pct
-                            }
-                        else:
-                            t_plus_data[f't+{i}'] = {
-                                'low_price': None,
-                                'low_date': None,
-                                'end_zhangting_price': None,
-                                'price_change_low_pct': None
-                            }
-                    else:
-                        t_plus_data[f't+{i}'] = {
-                            'low_price': None,
-                            'low_date': None,
-                            'end_zhangting_price': None,
-                            'price_change_low_pct': None
-                        }
-
                 result_list.append({
                     'ts_code': ts_code,
                     'start_price': round(float(start_price), 2),
@@ -387,8 +332,7 @@ class StockMonitor:
                     'low_price': round(low_price, 2) if low_price is not None else None,
                     'low_date': low_date,
                     'price_change_low_pct': price_change_low_pct,
-                    'daily_data': daily_list,
-                    't_plus_data': t_plus_data
+                    'daily_data': daily_list
                 })
 
             # 按最低起涨幅从高到低排序
@@ -516,6 +460,7 @@ class StockMonitor:
                 'ts_code': 股票代码,
                 'name': 股票名称,
                 'market': 市场类型,
+                'limit_up': 涨停幅度(%),
                 'start_price': 开始日期的前一天收盘价,
                 'end_price': 结束日期收盘价,
                 'price_change_pct': 累计涨幅(%),
@@ -772,68 +717,12 @@ class StockMonitor:
                     limit_up_pct
                 )
 
-                # 计算 t+1 到 t+6 的数据
-                # 使用 t_plus_data 中的 low_price 和 low_date，计算涨幅和偏离值
-                future_data = {}
-                t_plus_data = price_change.get('t_plus_data', {})
-
-                for i in range(1, 7):
-                    ti_key = f't+{i}'
-
-                    if ti_key in t_plus_data:
-                        ti_info = t_plus_data[ti_key]
-                        ti_low_date = ti_info['low_date']
-                        ti_low_price = ti_info['low_price']
-                        ti_end_zhangting_price = ti_info['end_zhangting_price']
-                        price_change_ti = ti_info['price_change_low_pct']
-
-                        # 计算指数从 ti_low_date 到 end_date 的涨幅
-                        index_change_ti = 0
-                        try:
-                            if ti_low_date and end_date:
-                                # 从缓存中获取指数数据
-                                index_low_data = index_data_cache.get((stock_index_code, ti_low_date))
-                                index_end_data = index_data_cache.get((stock_index_code, end_date))
-
-                                if index_low_data and index_end_data:
-                                    low_close = float(index_low_data['pre_close'])
-                                    end_close = float(index_end_data['close'])
-                                    if low_close > 0:
-                                        index_change_ti = round((end_close / low_close - 1) * 100, 2)
-                        except Exception as e:
-                            logger.debug(f"计算指数 t+{i} 涨幅失败: {e}")
-                            index_change_ti = 0
-
-                        # 计算偏离值
-                        deviation_ti = price_change_ti - index_change_ti if price_change_ti is not None else None
-
-                        # 判断是否超过异动阈值
-                        is_abnormal = False
-                        if threshold is not None and deviation_ti is not None and deviation_ti > threshold:
-                            is_abnormal = True
-
-                        future_data[ti_key] = {
-                            'low_price': ti_low_price,
-                            'low_date': ti_low_date,
-                            'end_zhangting_price': ti_end_zhangting_price,
-                            'price_change_pct': price_change_ti,
-                            'deviation': round(deviation_ti, 2) if deviation_ti is not None else None,
-                            'is_abnormal': is_abnormal
-                        }
-                    else:
-                        future_data[ti_key] = {
-                            'low_price': None,
-                            'low_date': None,
-                            'end_zhangting_price': None,
-                            'price_change_pct': None,
-                            'deviation': None,
-                            'is_abnormal': False
-                        }
-
                 result_item = {
                     'ts_code': ts_code,
                     'name': stock_basic.name,
                     'market': market,
+                    'limit_up': limit_up_pct,
+                    'threshold': threshold,
                     'start_price': price_change['start_price'],
                     'end_price': price_change['end_price'],
                     'price_change_pct': price_change_pct,
@@ -849,10 +738,6 @@ class StockMonitor:
                     'deviation_low': round(deviation_low, 2) if deviation_low is not None else None,
                     'deviation_date_range': deviation_date_range,
                 }
-
-                # 添加 t+1 到 t+6 的数据
-                for i in range(1, 7):
-                    result_item[f't+{i}'] = future_data[f't+{i}']
 
                 results.append(result_item)
 

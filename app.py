@@ -20,6 +20,7 @@ from trade_calendar import TradeCalendarManager
 from monitor import INDEX_CODES
 from cache_manager import CacheManager
 from apscheduler.schedulers.background import BackgroundScheduler
+from config import COPYRIGHT, WATERMARK, CHANGELOG
 
 # 初始化 Flask 应用
 app = Flask(__name__, static_folder='static', static_url_path='/static')
@@ -165,7 +166,10 @@ def refresh_data():
 @app.route('/')
 def index():
     """首页 - 返回静态 HTML"""
-    return render_template('index.html')
+    return render_template('index.html',
+                         copyright=COPYRIGHT,
+                         watermark=WATERMARK,
+                         changelog=CHANGELOG)
 
 
 # ============ API 路由 ============

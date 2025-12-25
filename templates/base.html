@@ -95,6 +95,20 @@
             z-index: 1;
         }
 
+        .update-info {
+            background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+            padding: 12px 30px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--primary-color);
+            font-weight: 500;
+            font-size: 0.95em;
+        }
+
+        .update-info p {
+            margin: 0;
+        }
+
         .nav {
             background: var(--bg-light);
             padding: 16px 30px;
@@ -105,7 +119,7 @@
             flex-wrap: wrap;
         }
 
-        .nav a {
+        .nav a, .nav button {
             text-decoration: none;
             color: var(--primary-color);
             font-weight: 500;
@@ -114,9 +128,11 @@
             transition: all 0.3s ease;
             border: 1px solid transparent;
             background: white;
+            cursor: pointer;
+            font-size: 1em;
         }
 
-        .nav a:hover {
+        .nav a:hover, .nav button:hover {
             background: var(--primary-color);
             color: white;
             box-shadow: var(--shadow-md);
@@ -125,6 +141,124 @@
 
         .content {
             padding: 30px;
+            position: relative;
+        }
+
+        /* 水印样式 */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 120px;
+            color: rgba(0, 0, 0, 0.05);
+            font-weight: bold;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 0;
+            user-select: none;
+        }
+
+        /* 更新日志模态框 */
+        .changelog-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .changelog-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .changelog-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideDown 0.3s ease;
+        }
+
+        .changelog-header {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+        .changelog-item {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .changelog-item:last-child {
+            border-bottom: none;
+        }
+
+        .changelog-version {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+        }
+
+        .changelog-date {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .changelog-list {
+            margin-left: 20px;
+            color: var(--text-primary);
+        }
+
+        .changelog-list li {
+            margin-bottom: 6px;
+            line-height: 1.6;
+        }
+
+        .changelog-close {
+            float: right;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .changelog-close:hover {
+            color: var(--primary-color);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
         }
 
         table {
@@ -199,6 +333,11 @@
 
             .header h1 {
                 font-size: 1.8em;
+            }
+
+            .update-info {
+                padding: 10px 20px;
+                font-size: 0.9em;
             }
 
             .nav {
@@ -479,6 +618,53 @@
                 }
             });
         });
+
+        // 更新日志数据（从后端配置获取）
+        const changelogData = {{ changelog | tojson }};
+
+        // 打开更新日志
+        function openChangelog() {
+            const modal = document.getElementById('changelogModal');
+            modal.classList.add('show');
+        }
+
+        // 关闭更新日志
+        function closeChangelog() {
+            const modal = document.getElementById('changelogModal');
+            modal.classList.remove('show');
+        }
+
+        // 点击背景关闭和初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('changelogModal');
+            if (modal) {
+                modal.addEventListener('click', function(event) {
+                    if (event.target === modal) {
+                        closeChangelog();
+                    }
+                });
+            }
+
+            // 渲染更新日志
+            const changelogList = document.getElementById('changelogList');
+            if (changelogList) {
+                changelogList.innerHTML = changelogData.map(log => `
+                    <div class="changelog-item">
+                        <div class="changelog-version">${log.version}</div>
+                        <div class="changelog-date">${log.date}</div>
+                        <ul class="changelog-list">
+                            ${log.changes.map(change => `<li>${change}</li>`).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+            }
+
+            // 添加水印（从后端配置获取）
+            const watermark = document.createElement('div');
+            watermark.className = 'watermark';
+            watermark.textContent = '{{ watermark }}';
+            document.body.appendChild(watermark);
+        });
     </script>
 </head>
 <body>
@@ -487,9 +673,13 @@
             <h1>📈 股票异动监控</h1>
             <p>实时监控股票涨幅和偏离值</p>
         </div>
-        
+
+        <div class="update-info">
+            <p>📊 数据更新时间：每个交易日 17:00</p>
+        </div>
+
         <div class="nav">
-            <a href="/">📊 首页</a>
+            <button onclick="openChangelog()">📝 更新日志</button>
         </div>
         
         <div class="content">
@@ -497,7 +687,16 @@
         </div>
         
         <div class="footer">
-            <p>数据更新时间：每个交易日 17:00 | 股票异动监控系统</p>
+            <p>股票异动监控系统 | © 2024 {{ copyright }}</p>
+        </div>
+    </div>
+
+    <!-- 更新日志模态框 -->
+    <div id="changelogModal" class="changelog-modal">
+        <div class="changelog-content">
+            <span class="changelog-close" onclick="closeChangelog()">&times;</span>
+            <div class="changelog-header">📝 更新日志</div>
+            <div id="changelogList"></div>
         </div>
     </div>
 </body>

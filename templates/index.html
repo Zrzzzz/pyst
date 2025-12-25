@@ -193,22 +193,26 @@
 
     .detail-content {
         padding: 20px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .t-plus-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 15px;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
         margin-top: 10px;
+        width: 100%;
     }
 
     .t-plus-card {
         background: white;
         border: 1px solid var(--border-color);
         border-radius: 8px;
-        padding: 12px;
+        padding: 10px;
         box-shadow: var(--shadow-sm);
         transition: all 0.2s ease;
+        font-size: 0.85em;
     }
 
     .t-plus-card:hover {
@@ -221,6 +225,9 @@
         color: var(--primary-color);
         margin-bottom: 8px;
         font-size: 0.95em;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
     .t-plus-item {
@@ -255,6 +262,145 @@
         background: #d1fae5;
         color: #059669;
     }
+
+    .edit-btn {
+        background: none;
+        border: none;
+        color: var(--primary-color);
+        cursor: pointer;
+        font-size: 0.7em;
+        padding: 2px 4px;
+        margin-left: 4px;
+        transition: all 0.2s ease;
+        border-radius: 3px;
+        white-space: nowrap;
+    }
+
+    .edit-btn:hover {
+        background: var(--primary-light);
+        color: white;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        animation: fadeIn 0.3s ease;
+    }
+
+    .modal.show {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        max-width: 400px;
+        width: 90%;
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .modal-header {
+        font-size: 1.2em;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.95em;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.95em;
+        box-sizing: border-box;
+        transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-hint {
+        font-size: 0.85em;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.95em;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary {
+        background: var(--bg-lighter);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+        background: var(--border-color);
+    }
 </style>
 {% endblock %}
 
@@ -268,7 +414,7 @@
         </p>
     </div>
 
-    <div id="table-10-container" class="table-wrapper">
+    <div id="table-10-new-container" class="table-wrapper">
         <div class="loading">
             <div class="loading-spinner"></div>
             <p>加载中...</p>
@@ -287,7 +433,7 @@
         </p>
     </div>
 
-    <div id="table-30-container" class="table-wrapper">
+    <div id="table-30-new-container" class="table-wrapper">
         <div class="loading">
             <div class="loading-spinner"></div>
             <p>加载中...</p>
@@ -295,6 +441,9 @@
     </div>
 </div>
 
+
+
+<script src="/static/stock_deviation.js"></script>
 <script>
 // 页面加载时获取数据
 document.addEventListener('DOMContentLoaded', function() {
@@ -307,20 +456,21 @@ async function loadBothTables() {
         const result = await response.json();
 
         if (result.code === 0) {
-            renderTable('table-10-container', result.data.stocks_10, '10日偏离', 'period_10');
-            renderTable('table-30-container', result.data.stocks_30, '30日偏离', 'period_30');
+            // 新榜单：使用JS函数计算T+1~T+5
+            renderTableWithJSCalculation('table-10-new-container', result.data.stocks_10, '10日偏离', 'period_10_new', 5);
+            renderTableWithJSCalculation('table-30-new-container', result.data.stocks_30, '30日偏离', 'period_30_new', 5);
         } else {
-            showError('table-10-container', result.message);
-            showError('table-30-container', result.message);
+            showError('table-10-new-container', result.message);
+            showError('table-30-new-container', result.message);
         }
     } catch (error) {
         console.error('加载数据失败:', error);
-        showError('table-10-container', '加载数据失败: ' + error.message);
-        showError('table-30-container', '加载数据失败: ' + error.message);
+        showError('table-10-new-container', '加载数据失败: ' + error.message);
+        showError('table-30-new-container', '加载数据失败: ' + error.message);
     }
 }
 
-function renderTable(containerId, data, periodLabel, period) {
+function renderTableWithJSCalculation(containerId, data, periodLabel, period, maxTPlusDays = 6) {
     const container = document.getElementById(containerId);
 
     if (!data || data.length === 0) {
@@ -328,15 +478,20 @@ function renderTable(containerId, data, periodLabel, period) {
         return;
     }
 
+    // 根据period确定基础天数
+    const baseDays = period.includes('30') ? 30 : 10;
+
     let html = '<table><thead><tr>';
     html += '<th style="width: 60px;">排名</th>';
     html += '<th>股票代码</th>';
     html += '<th>股票名称</th>';
     html += '<th>市场类型</th>';
+    html += '<th>现价</th>';
+    html += '<th>最低价</th>';
     html += '<th>累计涨幅</th>';
     html += '<th>指数涨幅</th>';
     html += `<th>${periodLabel}</th>`;
-    html += '<th>T+1/T+2偏离</th>';
+    html += `<th>T+1/T+2偏离(JS计算)</th>`;
     html += '<th>交易日周期</th>';
     html += '<th>日期范围</th>';
     html += '<th style="width: 80px;">详情</th>';
@@ -348,35 +503,60 @@ function renderTable(containerId, data, periodLabel, period) {
         const deviationClass = item.deviation >= 0 ? 'positive' : 'negative';
         const rowId = `row-${period}-${index}`;
 
-        // 获取 t+1 和 t+2 的数据
-        const t1Data = item['t+1'] || {};
-        const t2Data = item['t+2'] || {};
+        // 使用JS函数计算T+1和T+2的偏离值
+        // 生成模拟涨停价格
+        const lastPrice = item.stock_prices[item.stock_prices.length - 1].close;
+        const limitUpPct = item.limit_up;
 
-        const t1DeviationClass = t1Data.deviation >= 0 ? 'positive' : 'negative';
-        const t2DeviationClass = t2Data.deviation >= 0 ? 'positive' : 'negative';
-        const t1AbnormalClass = t1Data.is_abnormal ? 'yes' : 'no';
-        const t2AbnormalClass = t2Data.is_abnormal ? 'yes' : 'no';
-        const t1AbnormalText = t1Data.is_abnormal ? '✓' : '✗';
-        const t2AbnormalText = t2Data.is_abnormal ? '✓' : '✗';
+        // 获取最低价
+        let lowestPrice = item.stock_prices[0].pre_close;
+        for (let i = 1; i < item.stock_prices.length; i++) {
+            if (item.stock_prices[i].pre_close < lowestPrice) {
+                lowestPrice = item.stock_prices[i].pre_close;
+            }
+        }
+
+        const t1ExtraPrices = generateLimitUpPrices(lastPrice, limitUpPct, 1);
+        const t2ExtraPrices = generateLimitUpPrices(lastPrice, limitUpPct, 2);
+
+        const t1Result = calculateTrailingDeviation(item.stock_prices, item.index_prices, baseDays, t1ExtraPrices);
+        const t2Result = calculateTrailingDeviation(item.stock_prices, item.index_prices, baseDays, t2ExtraPrices);
+
+        const t1Deviation = t1Result.success ? t1Result.deviation : null;
+        const t2Deviation = t2Result.success ? t2Result.deviation : null;
+
+        // 判断是否异动
+        const threshold = item.threshold || 100;
+        const t1IsAbnormal = t1Deviation !== null && t1Deviation > threshold;
+        const t2IsAbnormal = t2Deviation !== null && t2Deviation > threshold;
+
+        const t1DeviationClass = t1Deviation !== null && t1Deviation >= 0 ? 'positive' : 'negative';
+        const t2DeviationClass = t2Deviation !== null && t2Deviation >= 0 ? 'positive' : 'negative';
+        const t1AbnormalClass = t1IsAbnormal ? 'yes' : 'no';
+        const t2AbnormalClass = t2IsAbnormal ? 'yes' : 'no';
+        const t1AbnormalText = t1IsAbnormal ? '✓' : '✗';
+        const t2AbnormalText = t2IsAbnormal ? '✓' : '✗';
 
         // 主数据行
-        html += `<tr data-market="${item.market}" data-stock-prices='${JSON.stringify(item.stock_prices)}' data-index-prices='${JSON.stringify(item.index_prices)}' data-period="${period}">`;
+        html += `<tr data-ts-code="${item.ts_code}" data-market="${item.market}" data-stock-prices='${JSON.stringify(item.stock_prices)}' data-index-prices='${JSON.stringify(item.index_prices)}' data-period="${period}" data-limit-up="${item.limit_up}" data-threshold="${item.threshold || 100}" data-base-days="${baseDays}" data-max-t-plus-days="${maxTPlusDays}">`;
         html += `<td class="rank">${index + 1}</td>`;
         html += `<td style="font-weight: 600; color: var(--primary-color);">${item.ts_code}</td>`;
         html += `<td style="font-weight: 500;">${item.name}</td>`;
         html += `<td><span class="market-badge">${item.market}</span></td>`;
+        html += `<td style="text-align: right; font-weight: 600;">${lastPrice.toFixed(2)}</td>`;
+        html += `<td style="text-align: right; font-weight: 600;">${lowestPrice.toFixed(2)}</td>`;
         html += `<td><span class="${priceChangeClass}">${item.price_change_pct.toFixed(2)}%</span></td>`;
         html += `<td><span class="${indexChangeClass}">${item.index_change_pct.toFixed(2)}%</span></td>`;
         html += `<td><span class="${deviationClass}" style="font-weight: 700; font-size: 1.05em;">${item.deviation.toFixed(2)}%</span></td>`;
         html += `<td class="metrics-cell">
             <div class="metrics-row">
                 <span class="metrics-label">T+1:</span>
-                <span class="metrics-value ${t1DeviationClass}">${t1Data.deviation ? t1Data.deviation.toFixed(2) : 'N/A'}%</span>
+                <span class="metrics-value ${t1DeviationClass}">${t1Deviation !== null ? t1Deviation.toFixed(2) : 'N/A'}%</span>
                 <span class="abnormal-badge ${t1AbnormalClass}" style="margin-left: 4px;">${t1AbnormalText}</span>
             </div>
             <div class="metrics-row">
                 <span class="metrics-label">T+2:</span>
-                <span class="metrics-value ${t2DeviationClass}">${t2Data.deviation ? t2Data.deviation.toFixed(2) : 'N/A'}%</span>
+                <span class="metrics-value ${t2DeviationClass}">${t2Deviation !== null ? t2Deviation.toFixed(2) : 'N/A'}%</span>
                 <span class="abnormal-badge ${t2AbnormalClass}" style="margin-left: 4px;">${t2AbnormalText}</span>
             </div>
         </td>`;
@@ -385,12 +565,12 @@ function renderTable(containerId, data, periodLabel, period) {
         html += `<td style="text-align: center;"><span class="expand-btn" onclick="toggleDetail('${rowId}')">▼ 展开</span></td>`;
         html += '</tr>';
 
-        // 详细信息行
+        // 详细信息行 - 使用JS计算的T+1到T+maxTPlusDays数据
         html += `<tr class="detail-row" id="${rowId}">`;
-        html += `<td colspan="10">`;
+        html += `<td colspan="13">`;
         html += `<div class="detail-content">`;
-        html += `<h4 style="margin-top: 0; color: var(--primary-color);">T+i 涨停模拟数据</h4>`;
-        html += renderTPlusData(item);
+        html += `<h4 style="margin-top: 0; color: var(--primary-color);">T+i 偏离值数据 (JS动态计算)</h4>`;
+        html += renderTPlusDataWithJSCalculation(item, maxTPlusDays, baseDays, item.threshold || 100);
         html += `</div>`;
         html += `</td>`;
         html += '</tr>';
@@ -402,50 +582,96 @@ function renderTable(containerId, data, periodLabel, period) {
 
 
 
+
+
 function showError(containerId, message) {
     const container = document.getElementById(containerId);
     container.innerHTML = `<div class="error-message">加载失败: ${message}</div>`;
 }
 
-function renderTPlusData(item) {
-    let html = '<div class="t-plus-grid">';
+function renderTPlusDataWithJSCalculation(item, maxTPlusDays = 6, baseDays = 10, threshold = 100) {
+    let html = '<div class="t-plus-grid" id="t-plus-grid-' + item.ts_code + '">';
 
-    // 渲染 t+1 到 t+6
-    for (let i = 1; i <= 6; i++) {
-        const key = `t+${i}`;
-        const data = item[key];
+    // 获取最后一天的收盘价和涨停幅度
+    const lastPrice = item.stock_prices[item.stock_prices.length - 1].close;
+    const limitUpPct = item.limit_up;
 
-        if (data) {
-            const priceChangeClass = data.price_change_pct >= 0 ? 'positive' : 'negative';
-            const deviationClass = data.deviation >= 0 ? 'positive' : 'negative';
-            const abnormalClass = data.is_abnormal ? 'yes' : 'no';
-            const abnormalText = data.is_abnormal ? '是' : '否';
+    // 存储修改后的涨幅（用于级联计算）
+    const modifiedPrices = {};
 
-            html += `<div class="t-plus-card">`;
-            html += `<div class="t-plus-title">${key.toUpperCase()}</div>`;
+    // 渲染 t+1 到 t+maxTPlusDays，使用JS函数动态计算
+    for (let i = 1; i <= maxTPlusDays; i++) {
+        // 生成模拟涨停价格
+        const extraPrices = generateLimitUpPrices(lastPrice, limitUpPct, i);
+        const result = calculateTrailingDeviation(item.stock_prices, item.index_prices, baseDays, extraPrices);
+
+        if (result.success) {
+            const stockChangePercent = result.stock.changePercent;
+            const indexChangePercent = result.index.changePercent;
+            const deviation = result.deviation;
+
+            // 计算当日涨幅（T+n相对于T+n-1的涨幅）
+            let dailyChangePercent = 0;
+            if (i === 1) {
+                // T+1的当日涨幅 = (T+1收盘价 - 最后一天收盘价) / 最后一天收盘价 * 100
+                dailyChangePercent = ((extraPrices[0] - lastPrice) / lastPrice) * 100;
+            } else {
+                // T+n的当日涨幅 = (T+n收盘价 - T+n-1收盘价) / T+n-1收盘价 * 100
+                const prevPrice = extraPrices[i - 2];
+                dailyChangePercent = ((extraPrices[i - 1] - prevPrice) / prevPrice) * 100;
+            }
+
+            // 判断是否异动
+            const isAbnormal = deviation > threshold;
+
+            const priceChangeClass = stockChangePercent >= 0 ? 'positive' : 'negative';
+            const dailyChangeClass = dailyChangePercent >= 0 ? 'positive' : 'negative';
+            const deviationClass = deviation >= 0 ? 'positive' : 'negative';
+            const abnormalClass = isAbnormal ? 'yes' : 'no';
+            const abnormalText = isAbnormal ? '是' : '否';
+
+            const cardId = `t-plus-card-${item.ts_code}-${i}`;
+            html += `<div class="t-plus-card" id="${cardId}">`;
+            html += `<div class="t-plus-title">T+${i} <button class="edit-btn" onclick="openEditModal('${item.ts_code}', ${i}, ${limitUpPct}, ${lastPrice}, ${baseDays}, ${maxTPlusDays})">✏️ 修改</button></div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">最低价:</span>`;
-            html += `<span class="t-plus-value">${data.low_price ? data.low_price.toFixed(2) : 'N/A'}</span>`;
+            html += `<span class="t-plus-value">${result.stock.lowestPreClose.toFixed(2)}</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">日期:</span>`;
-            html += `<span class="t-plus-value">${data.low_date || 'N/A'}</span>`;
+            html += `<span class="t-plus-value">${result.stock.lowestDate}</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">涨停价:</span>`;
-            html += `<span class="t-plus-value">${data.end_zhangting_price ? data.end_zhangting_price.toFixed(2) : 'N/A'}</span>`;
+            html += `<span class="t-plus-value" id="current-close-${item.ts_code}-${i}">${result.stock.currentClose.toFixed(2)}</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">涨幅:</span>`;
-            html += `<span class="t-plus-value ${priceChangeClass}">${data.price_change_pct ? data.price_change_pct.toFixed(2) : 'N/A'}%</span>`;
+            html += `<span class="t-plus-value ${priceChangeClass}" id="price-change-${item.ts_code}-${i}">${stockChangePercent.toFixed(2)}%</span>`;
+            html += `</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">当日涨幅:</span>`;
+            html += `<span class="t-plus-value ${dailyChangeClass}" id="daily-change-${item.ts_code}-${i}">${dailyChangePercent.toFixed(2)}%</span>`;
+            html += `</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">指数涨幅:</span>`;
+            html += `<span class="t-plus-value" id="index-change-${item.ts_code}-${i}">${indexChangePercent.toFixed(2)}%</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">偏离值:</span>`;
-            html += `<span class="t-plus-value ${deviationClass}">${data.deviation ? data.deviation.toFixed(2) : 'N/A'}%</span>`;
+            html += `<span class="t-plus-value ${deviationClass}" id="deviation-${item.ts_code}-${i}">${deviation.toFixed(2)}%</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">异动:</span>`;
-            html += `<span class="abnormal-badge ${abnormalClass}">${abnormalText}</span>`;
+            html += `<span class="abnormal-badge ${abnormalClass}" id="abnormal-${item.ts_code}-${i}">${abnormalText}</span>`;
+            html += `</div>`;
+            html += `</div>`;
+        } else {
+            html += `<div class="t-plus-card">`;
+            html += `<div class="t-plus-title">T+${i}</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">错误:</span>`;
+            html += `<span class="t-plus-value">${result.error}</span>`;
             html += `</div>`;
             html += `</div>`;
         }
@@ -454,6 +680,8 @@ function renderTPlusData(item) {
     html += '</div>';
     return html;
 }
+
+
 
 function toggleDetail(rowId) {
     const detailRow = document.getElementById(rowId);
@@ -467,6 +695,211 @@ function toggleDetail(rowId) {
         btn.textContent = '▲ 收起';
     }
 }
+
+// 存储当前编辑的数据
+let currentEditData = {
+    tsCode: null,
+    tPlusDay: null,
+    limitUpPct: null,
+    lastPrice: null,
+    baseDays: null,
+    maxTPlusDays: null,
+    modifiedPrices: {} // 存储修改后的涨幅
+};
+
+function openEditModal(tsCode, tPlusDay, limitUpPct, lastPrice, baseDays, maxTPlusDays) {
+    // 获取表格行数据
+    const tableRow = document.querySelector(`tr[data-ts-code="${tsCode}"]`);
+    const threshold = tableRow ? parseFloat(tableRow.getAttribute('data-threshold')) : 100;
+    const stockPrices = tableRow ? JSON.parse(tableRow.getAttribute('data-stock-prices')) : [];
+    const indexPrices = tableRow ? JSON.parse(tableRow.getAttribute('data-index-prices')) : [];
+
+    currentEditData = {
+        tsCode: tsCode,
+        tPlusDay: tPlusDay,
+        limitUpPct: limitUpPct,
+        lastPrice: lastPrice,
+        baseDays: baseDays,
+        maxTPlusDays: maxTPlusDays,
+        threshold: threshold,
+        stockPrices: stockPrices,
+        indexPrices: indexPrices
+    };
+
+    // 获取当前的当日涨幅值
+    const dailyChangeElement = document.getElementById(`daily-change-${tsCode}-${tPlusDay}`);
+    const currentValue = dailyChangeElement ? parseFloat(dailyChangeElement.textContent) : 0;
+
+    // 设置模态框内容
+    document.getElementById('editModalTitle').textContent = `修改 ${tsCode} T+${tPlusDay} 当日涨幅`;
+    document.getElementById('priceChangeInput').value = currentValue.toFixed(2);
+
+    // 设置范围提示
+    const minValue = -limitUpPct;
+    const maxValue = limitUpPct;
+    document.getElementById('rangeHint').textContent = `范围: ${minValue.toFixed(2)}% ~ ${maxValue.toFixed(2)}%`;
+
+    // 显示模态框
+    document.getElementById('editModal').classList.add('show');
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').classList.remove('show');
+}
+
+function saveModification() {
+    const newValue = parseFloat(document.getElementById('priceChangeInput').value);
+    const limitUpPct = currentEditData.limitUpPct;
+    const minValue = -limitUpPct;
+    const maxValue = limitUpPct;
+
+    // 验证输入
+    if (isNaN(newValue)) {
+        alert('请输入有效的数字');
+        return;
+    }
+
+    if (newValue < minValue || newValue > maxValue) {
+        alert(`涨幅必须在 ${minValue.toFixed(2)}% 到 ${maxValue.toFixed(2)}% 之间`);
+        return;
+    }
+
+    // 保存修改并重新计算后续数据
+    recalculateTPlusData(newValue);
+    closeEditModal();
+}
+
+function recalculateTPlusData(modifiedDailyChange) {
+    const { tsCode, tPlusDay, limitUpPct, baseDays, maxTPlusDays, threshold, stockPrices, indexPrices, lastPrice } = currentEditData;
+
+    // 获取T+tPlusDay前一天的价格
+    let prevPrice;
+    if (tPlusDay === 1) {
+        prevPrice = lastPrice;
+    } else {
+        // 生成T+tPlusDay-1的价格
+        const prevExtraPrices = generateLimitUpPrices(lastPrice, limitUpPct, tPlusDay - 1);
+        prevPrice = prevExtraPrices[tPlusDay - 2];
+    }
+
+    // 计算修改后的价格（基于前一天价格和当日涨幅）
+    const modifiedPrice = prevPrice * (1 + modifiedDailyChange / 100);
+
+    // 生成从修改点开始的新价格序列
+    let currentPrice = modifiedPrice;
+    const newExtraPrices = [modifiedPrice];
+
+    // 对于 T+tPlusDay 之后的天数，继续涨停
+    for (let i = tPlusDay + 1; i <= maxTPlusDays; i++) {
+        currentPrice = currentPrice * (1 + limitUpPct / 100);
+        newExtraPrices.push(parseFloat(currentPrice.toFixed(2)));
+    }
+
+    // 重新计算 T+tPlusDay 到 T+maxTPlusDays 的数据
+    for (let i = tPlusDay; i <= maxTPlusDays; i++) {
+        // 生成到第 i 天的价格序列
+        const extraPrices = newExtraPrices.slice(0, i - tPlusDay + 1);
+
+        // 计算偏离值
+        const result = calculateTrailingDeviation(stockPrices, indexPrices, baseDays, extraPrices);
+
+        if (result.success) {
+            const stockChangePercent = result.stock.changePercent;
+            const indexChangePercent = result.index.changePercent;
+            const deviation = result.deviation;
+            const isAbnormal = deviation > threshold;
+
+            // 计算当日涨幅
+            let dailyChangePercent = 0;
+            if (i === tPlusDay) {
+                // 修改的那一天，当日涨幅 = (修改后的价格 - 前一天价格) / 前一天价格 * 100
+                const prevPrice = tPlusDay === 1 ? lastPrice : newExtraPrices[0];
+                dailyChangePercent = ((extraPrices[0] - prevPrice) / prevPrice) * 100;
+            } else {
+                // 后续天数，当日涨幅 = (T+n收盘价 - T+n-1收盘价) / T+n-1收盘价 * 100
+                const prevPrice = extraPrices[i - tPlusDay - 1];
+                dailyChangePercent = ((extraPrices[i - tPlusDay] - prevPrice) / prevPrice) * 100;
+            }
+
+            // 更新UI
+            const currentCloseElement = document.getElementById(`current-close-${tsCode}-${i}`);
+            const priceChangeElement = document.getElementById(`price-change-${tsCode}-${i}`);
+            const dailyChangeElement = document.getElementById(`daily-change-${tsCode}-${i}`);
+            const indexChangeElement = document.getElementById(`index-change-${tsCode}-${i}`);
+            const deviationElement = document.getElementById(`deviation-${tsCode}-${i}`);
+            const abnormalElement = document.getElementById(`abnormal-${tsCode}-${i}`);
+
+            if (currentCloseElement) {
+                currentCloseElement.textContent = result.stock.currentClose.toFixed(2);
+            }
+
+            if (priceChangeElement) {
+                priceChangeElement.textContent = stockChangePercent.toFixed(2) + '%';
+                priceChangeElement.className = `t-plus-value ${stockChangePercent >= 0 ? 'positive' : 'negative'}`;
+            }
+
+            if (dailyChangeElement) {
+                dailyChangeElement.textContent = dailyChangePercent.toFixed(2) + '%';
+                dailyChangeElement.className = `t-plus-value ${dailyChangePercent >= 0 ? 'positive' : 'negative'}`;
+            }
+
+            if (indexChangeElement) {
+                indexChangeElement.textContent = indexChangePercent.toFixed(2) + '%';
+            }
+
+            if (deviationElement) {
+                deviationElement.textContent = deviation.toFixed(2) + '%';
+                deviationElement.className = `t-plus-value ${deviation >= 0 ? 'positive' : 'negative'}`;
+            }
+
+            if (abnormalElement) {
+                abnormalElement.textContent = isAbnormal ? '是' : '否';
+                abnormalElement.className = `abnormal-badge ${isAbnormal ? 'yes' : 'no'}`;
+            }
+        }
+    }
+}
+
+// 关闭模态框的事件监听
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('editModal');
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        });
+    }
+
+    // 回车保存
+    const input = document.getElementById('priceChangeInput');
+    if (input) {
+        input.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                saveModification();
+            }
+        });
+    }
+});
 </script>
+
+<!-- 修改涨幅的模态框 -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header" id="editModalTitle">修改涨幅</div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">修改涨幅 (%)</label>
+                <input type="number" id="priceChangeInput" class="form-input" step="0.01" placeholder="输入涨幅百分比">
+                <div class="form-hint" id="rangeHint">范围: -10% ~ 50%</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveModification()">保存</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
