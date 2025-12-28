@@ -465,6 +465,9 @@ async function loadBothTables() {
             // 新榜单：使用JS函数计算T+1~T+5
             renderTableWithJSCalculation('table-10-new-container', result.data.stocks_10, '10日偏离', 'period_10_new', 5);
             renderTableWithJSCalculation('table-30-new-container', result.data.stocks_30, '30日偏离', 'period_30_new', 5);
+
+            // 在两个榜单都渲染完成后，添加另一榜单的异动信息
+            addCrossListAbnormalInfo();
         } else {
             showError('table-10-new-container', result.message);
             showError('table-30-new-container', result.message);
@@ -991,6 +994,145 @@ function recalculateTPlusData(modifiedDailyChange) {
                 possibleChangeElement.className = `t-plus-value ${possibleNDayChange >= 0 ? 'positive' : 'negative'}`;
             }
         }
+    }
+}
+
+/**
+ * 为所有 T+n 卡片添加另一榜单的异动信息
+ * 在两个榜单都渲染完成后调用
+ */
+function addCrossListAbnormalInfo() {
+    // 遍历10日榜单的所有股票
+    stocksData_10.forEach((item) => {
+        const tsCode = item.ts_code;
+        // 查询该股票在30日榜单中的信息
+        addAbnormalInfoToCards(tsCode, 'period_10_new', 'period_30_new', stocksData_30);
+    });
+
+    // 遍历30日榜单的所有股票
+    stocksData_30.forEach((item) => {
+        const tsCode = item.ts_code;
+        // 查询该股票在10日榜单中的信息
+        addAbnormalInfoToCards(tsCode, 'period_30_new', 'period_10_new', stocksData_10);
+    });
+}
+
+/**
+ * 为指定股票的所有 T+n 卡片添加另一榜单的异动信息
+ * @param {string} tsCode - 股票代码
+ * @param {string} currentPeriod - 当前榜单 (period_10_new 或 period_30_new)
+ * @param {string} otherPeriod - 另一榜单 (period_30_new 或 period_10_new)
+ * @param {Array} otherStocksData - 另一榜单的股票数据
+ */
+function addAbnormalInfoToCards(tsCode, currentPeriod, otherPeriod, otherStocksData) {
+    // 查找该股票在另一榜单中是否存在
+    const otherStock = otherStocksData.find(stock => stock.ts_code === tsCode);
+
+    // 获取当前榜单的股票详细信息
+    const currentStockDetails = stockDetailsMap[currentPeriod][tsCode];
+    if (!currentStockDetails) {
+        return;
+    }
+
+    const maxTPlusDays = currentStockDetails.max_t_plus_days;
+
+    // 为每个 T+n 卡片添加信息
+    for (let i = 1; i <= maxTPlusDays; i++) {
+        const cardId = `t-plus-card-${currentPeriod}-${tsCode}-${i}`;
+        const card = document.getElementById(cardId);
+
+        if (!card) {
+            continue;
+        }
+
+        let html = '';
+
+        if (!otherStock) {
+            // 该股票不在另一榜单中
+            html = `
+                <div class="metrics-divider"></div>
+                <div class="t-plus-item">
+                    <span class="t-plus-label">另一榜单:</span>
+                    <span class="t-plus-value" style="color: #999;">无异动</span>
+                </div>
+            `;
+        } else {
+            // 该股票在另一榜单中，计算其 T+i 的异动情况
+            const otherStockDetails = stockDetailsMap[otherPeriod][tsCode];
+            if (!otherStockDetails) {
+                return;
+            }
+
+            const otherStockModifiedChanges = otherPeriod.includes('30') ? stockModifiedChanges_30 : stockModifiedChanges_10;
+            const otherPriceChanges = otherStockModifiedChanges[tsCode] || {};
+            const otherLimitUpPct = otherStockDetails.limit_up;
+            const otherLastPrice = otherStockDetails.last_price;
+            const otherThreshold = otherStockDetails.threshold;
+            const otherBaseDays = otherStockDetails.base_days;
+
+            // 计算另一榜单的 T+i 价格数组
+            const otherAllPrices = calculatePricesFromChanges(otherLastPrice, otherPriceChanges, otherLimitUpPct, maxTPlusDays);
+            const otherExtraPrices = otherAllPrices.slice(0, i);
+
+            // 计算另一榜单的 T+i 偏离值
+            const otherResult = calculateTrailingDeviation(
+                otherStock.stock_prices,
+                otherStock.index_prices,
+                otherBaseDays,
+                otherExtraPrices
+            );
+
+            if (otherResult.success) {
+                const otherDeviation = otherResult.deviation;
+                const otherIsAbnormal = otherDeviation > otherThreshold;
+
+                // 计算可能的最高涨幅
+                const otherPossiblePriceData = calculatePossibleHighestPrice(
+                    otherResult.stock.lowestPreClose,
+                    otherThreshold,
+                    otherResult.index.changePercent,
+                    otherLastPrice
+                );
+                const otherPossibleNDayChange = otherPossiblePriceData.possibleNDayChange;
+
+                const otherDeviationClass = otherDeviation >= 0 ? 'positive' : 'negative';
+                const otherAbnormalClass = otherIsAbnormal ? 'yes' : 'no';
+                const otherAbnormalText = otherIsAbnormal ? '是' : '否';
+                const otherPossibleChangeClass = otherPossibleNDayChange >= 0 ? 'positive' : 'negative';
+
+                const otherPeriodLabel = otherPeriod.includes('30') ? '30日榜' : '10日榜';
+
+                html = `
+                    <div class="metrics-divider"></div>
+                    <div class="t-plus-item">
+                        <span class="t-plus-label">${otherPeriodLabel}异动:</span>
+                        <span class="abnormal-badge ${otherAbnormalClass}">${otherAbnormalText}</span>
+                    </div>
+                `;
+
+                // 只有在异动时才显示可能最高涨幅
+                if (otherIsAbnormal) {
+                    html += `
+                        <div class="t-plus-item">
+                            <span class="t-plus-label">可能最高涨幅:</span>
+                            <span class="t-plus-value ${otherPossibleChangeClass}">${otherPossibleNDayChange.toFixed(2)}%</span>
+                        </div>
+                    `;
+                }
+            } else {
+                // 计算失败
+                html = `
+                    <div class="metrics-divider"></div>
+                    <div class="t-plus-item">
+                        <span class="t-plus-label">另一榜单:</span>
+                        <span class="t-plus-value" style="color: #999;">计算失败</span>
+                    </div>
+                `;
+            }
+        }
+
+        // 将 HTML 插入到卡片末尾
+        card.insertAdjacentHTML('beforeend', html);
     }
 }
 
