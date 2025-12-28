@@ -251,7 +251,7 @@ scheduler.add_job(refresh_data, 'cron', hour=17, minute=0)
 scheduler.start()
 
 # 应用启动时立即刷新一次数据
-# refresh_data()
+refresh_data()
 logger.info("定时任务已启动，每天 17:00 自动刷新数据")
 
 

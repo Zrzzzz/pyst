@@ -456,6 +456,12 @@ async function loadBothTables() {
         const result = await response.json();
 
         if (result.code === 0) {
+            // 保存原始数据到全局变量
+            stocksData_10.length = 0;  // 清空数组
+            stocksData_30.length = 0;
+            stocksData_10.push(...result.data.stocks_10);
+            stocksData_30.push(...result.data.stocks_30);
+
             // 新榜单：使用JS函数计算T+1~T+5
             renderTableWithJSCalculation('table-10-new-container', result.data.stocks_10, '10日偏离', 'period_10_new', 5);
             renderTableWithJSCalculation('table-30-new-container', result.data.stocks_30, '30日偏离', 'period_30_new', 5);
@@ -478,8 +484,35 @@ function renderTableWithJSCalculation(containerId, data, periodLabel, period, ma
         return;
     }
 
-    // 根据period确定基础天数
+    // 根据period确定基础天数和对应的修改字典
     const baseDays = period.includes('30') ? 30 : 10;
+    const stockModifiedChanges = period.includes('30') ? stockModifiedChanges_30 : stockModifiedChanges_10;
+
+    // 为每个股票预先计算涨幅数组，并存储到 stockDetailsMap
+    data.forEach((item) => {
+        const tsCode = item.ts_code;
+        const limitUpPct = item.limit_up;
+
+        // 存储股票详细信息到 stockDetailsMap
+        stockDetailsMap[period][tsCode] = {
+            stock_prices: item.stock_prices,
+            index_prices: item.index_prices,
+            limit_up: item.limit_up,
+            threshold: item.threshold || 100,
+            last_price: item.stock_prices[item.stock_prices.length - 1].close,
+            base_days: item.stock_prices.length,  // 使用实际数据长度
+            max_t_plus_days: maxTPlusDays
+        };
+
+        // 如果该股票还没有初始化涨幅数据，则初始化为默认涨停幅度
+        if (!stockModifiedChanges[tsCode]) {
+            stockModifiedChanges[tsCode] = {};
+            // 预先填充所有T+1到T+maxTPlusDays的默认涨幅
+            for (let i = 1; i <= maxTPlusDays; i++) {
+                stockModifiedChanges[tsCode][i] = limitUpPct;
+            }
+        }
+    });
 
     let html = '<table><thead><tr>';
     html += '<th style="width: 60px;">排名</th>';
@@ -508,6 +541,9 @@ function renderTableWithJSCalculation(containerId, data, periodLabel, period, ma
         const lastPrice = item.stock_prices[item.stock_prices.length - 1].close;
         const limitUpPct = item.limit_up;
 
+        // 使用实际的数据长度作为baseDays，而不是假设的值
+        const actualBaseDays = item.stock_prices.length;
+
         // 获取最低价
         let lowestPrice = item.stock_prices[0].pre_close;
         for (let i = 1; i < item.stock_prices.length; i++) {
@@ -519,8 +555,8 @@ function renderTableWithJSCalculation(containerId, data, periodLabel, period, ma
         const t1ExtraPrices = generateLimitUpPrices(lastPrice, limitUpPct, 1);
         const t2ExtraPrices = generateLimitUpPrices(lastPrice, limitUpPct, 2);
 
-        const t1Result = calculateTrailingDeviation(item.stock_prices, item.index_prices, baseDays, t1ExtraPrices);
-        const t2Result = calculateTrailingDeviation(item.stock_prices, item.index_prices, baseDays, t2ExtraPrices);
+        const t1Result = calculateTrailingDeviation(item.stock_prices, item.index_prices, actualBaseDays, t1ExtraPrices);
+        const t2Result = calculateTrailingDeviation(item.stock_prices, item.index_prices, actualBaseDays, t2ExtraPrices);
 
         const t1Deviation = t1Result.success ? t1Result.deviation : null;
         const t2Deviation = t2Result.success ? t2Result.deviation : null;
@@ -537,8 +573,8 @@ function renderTableWithJSCalculation(containerId, data, periodLabel, period, ma
         const t1AbnormalText = t1IsAbnormal ? '✓' : '✗';
         const t2AbnormalText = t2IsAbnormal ? '✓' : '✗';
 
-        // 主数据行
-        html += `<tr data-ts-code="${item.ts_code}" data-market="${item.market}" data-stock-prices='${JSON.stringify(item.stock_prices)}' data-index-prices='${JSON.stringify(item.index_prices)}' data-period="${period}" data-limit-up="${item.limit_up}" data-threshold="${item.threshold || 100}" data-base-days="${baseDays}" data-max-t-plus-days="${maxTPlusDays}">`;
+        // 主数据行 - 不再需要存储 data-* 属性，数据已存储在 JavaScript 变量中
+        html += `<tr data-ts-code="${item.ts_code}" data-period="${period}">`;
         html += `<td class="rank">${index + 1}</td>`;
         html += `<td style="font-weight: 600; color: var(--primary-color);">${item.ts_code}</td>`;
         html += `<td style="font-weight: 500;">${item.name}</td>`;
@@ -570,7 +606,7 @@ function renderTableWithJSCalculation(containerId, data, periodLabel, period, ma
         html += `<td colspan="13">`;
         html += `<div class="detail-content">`;
         html += `<h4 style="margin-top: 0; color: var(--primary-color);">T+i 偏离值数据 (JS动态计算)</h4>`;
-        html += renderTPlusDataWithJSCalculation(item, maxTPlusDays, baseDays, item.threshold || 100);
+        html += renderTPlusDataWithJSCalculation(item, maxTPlusDays, baseDays, item.threshold || 100, period);
         html += `</div>`;
         html += `</td>`;
         html += '</tr>';
@@ -589,21 +625,31 @@ function showError(containerId, message) {
     container.innerHTML = `<div class="error-message">加载失败: ${message}</div>`;
 }
 
-function renderTPlusDataWithJSCalculation(item, maxTPlusDays = 6, baseDays = 10, threshold = 100) {
+function renderTPlusDataWithJSCalculation(item, maxTPlusDays = 6, baseDays = 10, threshold = 100, period = 'period_10_new') {
     let html = '<div class="t-plus-grid" id="t-plus-grid-' + item.ts_code + '">';
 
     // 获取最后一天的收盘价和涨停幅度
     const lastPrice = item.stock_prices[item.stock_prices.length - 1].close;
     const limitUpPct = item.limit_up;
 
-    // 存储修改后的涨幅（用于级联计算）
-    const modifiedPrices = {};
+    // 使用实际的数据长度作为baseDays，而不是参数中的值
+    const actualBaseDays = item.stock_prices.length;
+
+    // 根据period确定使用哪个修改字典
+    const stockModifiedChanges = period.includes('30') ? stockModifiedChanges_30 : stockModifiedChanges_10;
+
+    // 获取该股票的涨幅数组
+    const tsCode = item.ts_code;
+    const priceChanges = stockModifiedChanges[tsCode] || {};
+
+    // 根据修改后的涨幅数组计算股价数组
+    const allPrices = calculatePricesFromChanges(lastPrice, priceChanges, limitUpPct, maxTPlusDays);
 
     // 渲染 t+1 到 t+maxTPlusDays，使用JS函数动态计算
     for (let i = 1; i <= maxTPlusDays; i++) {
-        // 生成模拟涨停价格
-        const extraPrices = generateLimitUpPrices(lastPrice, limitUpPct, i);
-        const result = calculateTrailingDeviation(item.stock_prices, item.index_prices, baseDays, extraPrices);
+        // 构建到第 i 天的完整价格序列
+        const extraPrices = allPrices.slice(0, i);
+        const result = calculateTrailingDeviation(item.stock_prices, item.index_prices, actualBaseDays, extraPrices);
 
         if (result.success) {
             const stockChangePercent = result.stock.changePercent;
@@ -630,9 +676,21 @@ function renderTPlusDataWithJSCalculation(item, maxTPlusDays = 6, baseDays = 10,
             const abnormalClass = isAbnormal ? 'yes' : 'no';
             const abnormalText = isAbnormal ? '是' : '否';
 
-            const cardId = `t-plus-card-${item.ts_code}-${i}`;
+            // 计算可能的最高价格和可能的n日涨幅
+            // 异动幅度为threshold（10日榜100%，30日榜200%）
+            const possiblePriceData = calculatePossibleHighestPrice(
+              result.stock.lowestPreClose,
+              item.threshold || 100,
+              result.index.changePercent,
+              lastPrice
+            );
+            const possibleHighestPrice = possiblePriceData.possibleHighestPrice;
+            const possibleNDayChange = possiblePriceData.possibleNDayChange;
+            const possibleChangeClass = possibleNDayChange >= 0 ? 'positive' : 'negative';
+
+            const cardId = `t-plus-card-${period}-${item.ts_code}-${i}`;
             html += `<div class="t-plus-card" id="${cardId}">`;
-            html += `<div class="t-plus-title">T+${i} <button class="edit-btn" onclick="openEditModal('${item.ts_code}', ${i}, ${limitUpPct}, ${lastPrice}, ${baseDays}, ${maxTPlusDays})">✏️ 修改</button></div>`;
+            html += `<div class="t-plus-title">T+${i} <button class="edit-btn" onclick="openEditModal('${item.ts_code}', ${i}, ${limitUpPct}, ${lastPrice}, ${baseDays}, ${maxTPlusDays}, '${period}')">✏️ 修改</button></div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">最低价:</span>`;
             html += `<span class="t-plus-value">${result.stock.lowestPreClose.toFixed(2)}</span>`;
@@ -643,27 +701,36 @@ function renderTPlusDataWithJSCalculation(item, maxTPlusDays = 6, baseDays = 10,
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">涨停价:</span>`;
-            html += `<span class="t-plus-value" id="current-close-${item.ts_code}-${i}">${result.stock.currentClose.toFixed(2)}</span>`;
+            html += `<span class="t-plus-value" id="current-close-${period}-${item.ts_code}-${i}">${result.stock.currentClose.toFixed(2)}</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">涨幅:</span>`;
-            html += `<span class="t-plus-value ${priceChangeClass}" id="price-change-${item.ts_code}-${i}">${stockChangePercent.toFixed(2)}%</span>`;
+            html += `<span class="t-plus-value ${priceChangeClass}" id="price-change-${period}-${item.ts_code}-${i}">${stockChangePercent.toFixed(2)}%</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">当日涨幅:</span>`;
-            html += `<span class="t-plus-value ${dailyChangeClass}" id="daily-change-${item.ts_code}-${i}">${dailyChangePercent.toFixed(2)}%</span>`;
+            html += `<span class="t-plus-value ${dailyChangeClass}" id="daily-change-${period}-${item.ts_code}-${i}">${dailyChangePercent.toFixed(2)}%</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">指数涨幅:</span>`;
-            html += `<span class="t-plus-value" id="index-change-${item.ts_code}-${i}">${indexChangePercent.toFixed(2)}%</span>`;
+            html += `<span class="t-plus-value" id="index-change-${period}-${item.ts_code}-${i}">${indexChangePercent.toFixed(2)}%</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">偏离值:</span>`;
-            html += `<span class="t-plus-value ${deviationClass}" id="deviation-${item.ts_code}-${i}">${deviation.toFixed(2)}%</span>`;
+            html += `<span class="t-plus-value ${deviationClass}" id="deviation-${period}-${item.ts_code}-${i}">${deviation.toFixed(2)}%</span>`;
             html += `</div>`;
             html += `<div class="t-plus-item">`;
             html += `<span class="t-plus-label">异动:</span>`;
-            html += `<span class="abnormal-badge ${abnormalClass}" id="abnormal-${item.ts_code}-${i}">${abnormalText}</span>`;
+            html += `<span class="abnormal-badge ${abnormalClass}" id="abnormal-${period}-${item.ts_code}-${i}">${abnormalText}</span>`;
+            html += `</div>`;
+            html += `<div class="metrics-divider"></div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">可能最高价:</span>`;
+            html += `<span class="t-plus-value" id="possible-highest-${period}-${item.ts_code}-${i}">${possibleHighestPrice.toFixed(2)}</span>`;
+            html += `</div>`;
+            html += `<div class="t-plus-item">`;
+            html += `<span class="t-plus-label">可能涨幅:</span>`;
+            html += `<span class="t-plus-value ${possibleChangeClass}" id="possible-change-${period}-${item.ts_code}-${i}">${possibleNDayChange.toFixed(2)}%</span>`;
             html += `</div>`;
             html += `</div>`;
         } else {
@@ -696,10 +763,24 @@ function toggleDetail(rowId) {
     }
 }
 
-// 存储当前编辑的数据
-// 全局存储每个股票的修改后涨幅数据
+// ==================== 数据存储 ====================
+// 使用 JavaScript 变量存储所有数据，而不是依赖 HTML data-* 属性
+
+// 存储从后端返回的原始数据
+const stocksData_10 = [];  // 10日榜单的原始数据
+const stocksData_30 = [];  // 30日榜单的原始数据
+
+// 存储每个股票的详细信息（用于快速查找）
+// 格式: { 'period_10_new': { 'tsCode': { stock_prices: [...], index_prices: [...], ... } } }
+const stockDetailsMap = {
+    'period_10_new': {},
+    'period_30_new': {}
+};
+
+// 为10日和30日榜单分别创建不同的字典来存储修改后的涨幅数据
 // 格式: { 'tsCode': { 1: 5.0, 2: 3.5, ... } }  // key是T+n的天数，value是修改后的当日涨幅
-const stockModifiedChanges = {};
+const stockModifiedChanges_10 = {};  // 10日榜单的修改数据
+const stockModifiedChanges_30 = {};  // 30日榜单的修改数据
 
 let currentEditData = {
     tsCode: null,
@@ -708,15 +789,25 @@ let currentEditData = {
     lastPrice: null,
     baseDays: null,
     maxTPlusDays: null,
+    period: null,
     modifiedPrices: {} // 存储修改后的涨幅
 };
 
-function openEditModal(tsCode, tPlusDay, limitUpPct, lastPrice, baseDays, maxTPlusDays) {
-    // 获取表格行数据
-    const tableRow = document.querySelector(`tr[data-ts-code="${tsCode}"]`);
-    const threshold = tableRow ? parseFloat(tableRow.getAttribute('data-threshold')) : 100;
-    const stockPrices = tableRow ? JSON.parse(tableRow.getAttribute('data-stock-prices')) : [];
-    const indexPrices = tableRow ? JSON.parse(tableRow.getAttribute('data-index-prices')) : [];
+function openEditModal(tsCode, tPlusDay, limitUpPct, lastPrice, baseDays, maxTPlusDays, period) {
+    // 从 JavaScript 变量获取数据，而不是从 HTML data-* 属性
+    const stockDetails = stockDetailsMap[period][tsCode];
+
+    if (!stockDetails) {
+        console.error('未找到股票数据:', tsCode, period);
+        return;
+    }
+
+    const threshold = stockDetails.threshold;
+    const stockPrices = stockDetails.stock_prices;
+    const indexPrices = stockDetails.index_prices;
+
+    // 根据period确定使用哪个修改字典
+    const stockModifiedChanges = period.includes('30') ? stockModifiedChanges_30 : stockModifiedChanges_10;
 
     currentEditData = {
         tsCode: tsCode,
@@ -727,12 +818,15 @@ function openEditModal(tsCode, tPlusDay, limitUpPct, lastPrice, baseDays, maxTPl
         maxTPlusDays: maxTPlusDays,
         threshold: threshold,
         stockPrices: stockPrices,
-        indexPrices: indexPrices
+        indexPrices: indexPrices,
+        period: period,
+        stockModifiedChanges: stockModifiedChanges
     };
 
-    // 获取当前的当日涨幅值
-    const dailyChangeElement = document.getElementById(`daily-change-${tsCode}-${tPlusDay}`);
-    const currentValue = dailyChangeElement ? parseFloat(dailyChangeElement.textContent) : 0;
+    // 获取当前的当日涨幅值（从修改字典中获取）
+    const currentValue = stockModifiedChanges[tsCode] && stockModifiedChanges[tsCode][tPlusDay]
+        ? stockModifiedChanges[tsCode][tPlusDay]
+        : limitUpPct;
 
     // 设置模态框内容
     document.getElementById('editModalTitle').textContent = `修改 ${tsCode} T+${tPlusDay} 当日涨幅`;
@@ -773,36 +867,42 @@ function saveModification() {
     closeEditModal();
 }
 
-function recalculateTPlusData(modifiedDailyChange) {
-    const { tsCode, tPlusDay, limitUpPct, baseDays, maxTPlusDays, threshold, stockPrices, indexPrices, lastPrice } = currentEditData;
+/**
+ * 根据修改后的涨幅数组计算股价数组
+ * @param {number} basePrice - 基础价格（最后一天的收盘价）
+ * @param {Object} modifiedChanges - 修改后的涨幅数据 { 1: 5.0, 2: 3.5, ... }
+ * @param {number} limitUpPct - 默认涨停幅度
+ * @param {number} maxDays - 最大天数
+ * @returns {Array} 计算后的股价数组
+ */
+function calculatePricesFromChanges(basePrice, modifiedChanges, limitUpPct, maxDays) {
+    const prices = [];
 
-    // 初始化该股票的修改数据
-    if (!stockModifiedChanges[tsCode]) {
-        stockModifiedChanges[tsCode] = {};
+    for (let i = 1; i <= maxDays; i++) {
+        const prevPrice = i === 1 ? basePrice : prices[i - 2];
+
+        // 获取该天的涨幅（优先使用修改后的值，否则使用默认涨停幅度）
+        const dailyChange = modifiedChanges[i] !== undefined ? modifiedChanges[i] : limitUpPct;
+
+        // 计算该天的股价
+        const price = parseFloat((prevPrice * (1 + dailyChange / 100)).toFixed(2));
+        prices.push(price);
     }
 
-    // 保存本次修改的涨幅
+    return prices;
+}
+
+function recalculateTPlusData(modifiedDailyChange) {
+    const { tsCode, tPlusDay, limitUpPct, baseDays, maxTPlusDays, threshold, stockPrices, indexPrices, lastPrice, stockModifiedChanges, period } = currentEditData;
+
+    // 使用实际的数据长度作为baseDays
+    const actualBaseDays = stockPrices.length;
+
+    // 保存本次修改的涨幅到对应的字典
     stockModifiedChanges[tsCode][tPlusDay] = modifiedDailyChange;
 
-    // 生成完整的T+1到T+maxTPlusDays的价格序列
-    const allPrices = []; // 索引0对应T+1，索引1对应T+2，以此类推
-
-    for (let i = 1; i <= maxTPlusDays; i++) {
-        const prevPrice = i === 1 ? lastPrice : allPrices[i - 2];
-
-        // 检查该天是否有修改过的涨幅
-        let dailyChange;
-        if (stockModifiedChanges[tsCode][i] !== undefined) {
-            // 使用修改后的涨幅
-            dailyChange = stockModifiedChanges[tsCode][i];
-        } else {
-            // 使用默认涨停幅度
-            dailyChange = limitUpPct;
-        }
-
-        const price = parseFloat((prevPrice * (1 + dailyChange / 100)).toFixed(2));
-        allPrices.push(price);
-    }
+    // 根据修改后的涨幅数组计算股价数组
+    const allPrices = calculatePricesFromChanges(lastPrice, stockModifiedChanges[tsCode], limitUpPct, maxTPlusDays);
 
     // 重新计算 T+1 到 T+maxTPlusDays 的数据
     for (let i = 1; i <= maxTPlusDays; i++) {
@@ -810,7 +910,7 @@ function recalculateTPlusData(modifiedDailyChange) {
         const extraPrices = allPrices.slice(0, i);
 
         // 计算偏离值
-        const result = calculateTrailingDeviation(stockPrices, indexPrices, baseDays, extraPrices);
+        const result = calculateTrailingDeviation(stockPrices, indexPrices, actualBaseDays, extraPrices);
 
         if (result.success) {
             const stockChangePercent = result.stock.changePercent;
@@ -833,13 +933,26 @@ function recalculateTPlusData(modifiedDailyChange) {
 
             dailyChangePercent = ((currentPrice - prevDayPrice) / prevDayPrice) * 100;
 
-            // 更新UI
-            const currentCloseElement = document.getElementById(`current-close-${tsCode}-${i}`);
-            const priceChangeElement = document.getElementById(`price-change-${tsCode}-${i}`);
-            const dailyChangeElement = document.getElementById(`daily-change-${tsCode}-${i}`);
-            const indexChangeElement = document.getElementById(`index-change-${tsCode}-${i}`);
-            const deviationElement = document.getElementById(`deviation-${tsCode}-${i}`);
-            const abnormalElement = document.getElementById(`abnormal-${tsCode}-${i}`);
+            // 计算可能的最高价格和可能的n日涨幅
+            // 异动幅度为threshold（10日榜100%，30日榜200%）
+            const possiblePriceData = calculatePossibleHighestPrice(
+              result.stock.lowestPreClose,
+              threshold,
+              indexChangePercent,
+              lastPrice
+            );
+            const possibleHighestPrice = possiblePriceData.possibleHighestPrice;
+            const possibleNDayChange = possiblePriceData.possibleNDayChange;
+
+            // 更新UI - 使用包含 period 的 ID 来区分不同榜单
+            const currentCloseElement = document.getElementById(`current-close-${period}-${tsCode}-${i}`);
+            const priceChangeElement = document.getElementById(`price-change-${period}-${tsCode}-${i}`);
+            const dailyChangeElement = document.getElementById(`daily-change-${period}-${tsCode}-${i}`);
+            const indexChangeElement = document.getElementById(`index-change-${period}-${tsCode}-${i}`);
+            const deviationElement = document.getElementById(`deviation-${period}-${tsCode}-${i}`);
+            const abnormalElement = document.getElementById(`abnormal-${period}-${tsCode}-${i}`);
+            const possibleHighestElement = document.getElementById(`possible-highest-${period}-${tsCode}-${i}`);
+            const possibleChangeElement = document.getElementById(`possible-change-${period}-${tsCode}-${i}`);
 
             if (currentCloseElement) {
                 currentCloseElement.textContent = result.stock.currentClose.toFixed(2);
@@ -867,6 +980,15 @@ function recalculateTPlusData(modifiedDailyChange) {
             if (abnormalElement) {
                 abnormalElement.textContent = isAbnormal ? '是' : '否';
                 abnormalElement.className = `abnormal-badge ${isAbnormal ? 'yes' : 'no'}`;
+            }
+
+            if (possibleHighestElement) {
+                possibleHighestElement.textContent = possibleHighestPrice.toFixed(2);
+            }
+
+            if (possibleChangeElement) {
+                possibleChangeElement.textContent = possibleNDayChange.toFixed(2) + '%';
+                possibleChangeElement.className = `t-plus-value ${possibleNDayChange >= 0 ? 'positive' : 'negative'}`;
             }
         }
     }

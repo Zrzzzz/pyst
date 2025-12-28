@@ -205,13 +205,36 @@ function generateLimitUpPrices(lastPrice, limitUpPct, days) {
   return prices;
 }
 
+/**
+ * 计算可能的最高价格和可能的n日涨幅
+ *
+ * @param {number} lowestPrice - 最低价格（基准价格）
+ * @param {number} deviationPct - 异动幅度百分比（例如 100 表示 100%）
+ * @param {number} indexChangePct - 指数幅度百分比（例如 4 表示 4%）
+ * @param {number} lastPrice - 最后一个交易日的收盘价
+ * @returns {Object} {possibleHighestPrice, possibleNDayChange}
+ */
+function calculatePossibleHighestPrice(lowestPrice, deviationPct, indexChangePct, lastPrice) {
+  // 可能的最高价格 = 最低价格 * (1 + 异动幅度 + 指数幅度)
+  const possibleHighestPrice = lowestPrice * (1 + (deviationPct + indexChangePct) / 100);
+
+  // 可能的n日涨幅 = (可能的最高价格 - 最后一个交易日的收盘价) / 最后一个交易日的收盘价 * 100
+  const possibleNDayChange = ((possibleHighestPrice - lastPrice) / lastPrice) * 100;
+
+  return {
+    possibleHighestPrice: parseFloat(possibleHighestPrice.toFixed(2)),
+    possibleNDayChange: parseFloat(possibleNDayChange.toFixed(2))
+  };
+}
+
 // 导出函数
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     calculateDeviation,
     findLowestPrice,
     calculateTrailingDeviation,
-    generateLimitUpPrices
+    generateLimitUpPrices,
+    calculatePossibleHighestPrice
   };
 }
 
