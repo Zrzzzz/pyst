@@ -52,14 +52,26 @@ const { isDark, toggleTheme } = useTheme()
   transform: scale(0.95);
 }
 
-.theme-toggle.dark {
+/* 亮色模式样式 */
+:global(html:not(.dark)) .theme-toggle {
   background: linear-gradient(135deg, #2962FF 0%, #3D5AFE 100%);
   border: 1px solid rgba(41, 98, 255, 0.3);
-  box-shadow: 0 4px 16px rgba(41, 98, 255, 0.4), 0 0 20px rgba(41, 98, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(41, 98, 255, 0.3), 0 0 20px rgba(41, 98, 255, 0.15);
 }
 
-.theme-toggle.dark:hover {
-  box-shadow: 0 8px 24px rgba(41, 98, 255, 0.6), 0 0 30px rgba(41, 98, 255, 0.3);
+:global(html:not(.dark)) .theme-toggle:hover {
+  box-shadow: 0 8px 24px rgba(41, 98, 255, 0.5), 0 0 30px rgba(41, 98, 255, 0.25);
+}
+
+/* 深色模式样式 */
+:global(html.dark) .theme-toggle {
+  background: linear-gradient(135deg, #2962FF 0%, #3D5AFE 100%);
+  border: 1px solid rgba(41, 98, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(41, 98, 255, 0.5), 0 0 20px rgba(41, 98, 255, 0.3);
+}
+
+:global(html.dark) .theme-toggle:hover {
+  box-shadow: 0 8px 24px rgba(41, 98, 255, 0.7), 0 0 30px rgba(41, 98, 255, 0.4);
 }
 
 .icon {

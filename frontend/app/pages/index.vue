@@ -1,7 +1,7 @@
 <template>
   <div class="home-page">
     <!-- 水印 -->
-    <Watermark />
+    <!-- <Watermark /> -->
 
     <!-- 页头 -->
     <div class="page-header">
@@ -97,15 +97,22 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 2rem;
-  background: rgba(21, 26, 33, 0.7);
+  background: rgba(248, 249, 250, 0.8);
   backdrop-filter: blur(12px);
   border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(41, 98, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 0 20px rgba(41, 98, 255, 0.08);
   border: 1px solid rgba(41, 98, 255, 0.15);
   transition: all 0.3s ease;
 }
 
-:global(.dark) .header-content {
+/* 亮色模式 */
+:global(html:not(.dark)) .header-content {
+  background: rgba(248, 249, 250, 0.9);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 0 20px rgba(41, 98, 255, 0.08);
+}
+
+/* 深色模式 */
+:global(html.dark) .header-content {
   background: rgba(21, 26, 33, 0.7);
   border: 1px solid rgba(41, 98, 255, 0.15);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(41, 98, 255, 0.1);
@@ -165,13 +172,20 @@ onMounted(() => {
 }
 
 .page-subtitle {
-  color: #EAECEF;
+  color: #374151;
+  background-clip: text;
   font-size: 1.125rem;
   margin-top: 0.5rem;
   font-weight: 500;
 }
 
-:global(.dark) .page-subtitle {
+/* 亮色模式 */
+:global(html:not(.dark)) .page-subtitle {
+  color: #374151;
+}
+
+/* 深色模式 */
+:global(html.dark) .page-subtitle {
   color: #EAECEF;
 }
 
@@ -246,7 +260,7 @@ onMounted(() => {
 }
 
 .section-title {
-  color: #EAECEF;
+  color: #1F2937;
   margin: 0;
   font-size: 1.75rem;
   font-weight: 700;
@@ -256,7 +270,13 @@ onMounted(() => {
   letter-spacing: -0.01em;
 }
 
-:global(.dark) .section-title {
+/* 亮色模式 */
+:global(html:not(.dark)) .section-title {
+  color: #1F2937;
+}
+
+/* 深色模式 */
+:global(html.dark) .section-title {
   color: #EAECEF;
 }
 
@@ -278,13 +298,19 @@ onMounted(() => {
   text-align: center;
   margin-top: 4rem;
   padding: 2rem;
-  color: #E1E4E8;
+  color: #6B7280;
   font-size: 0.875rem;
   animation: fadeIn 1s ease-out 0.6s both;
   font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
 }
 
-:global(.dark) .page-footer {
+/* 亮色模式 */
+:global(html:not(.dark)) .page-footer {
+  color: #6B7280;
+}
+
+/* 深色模式 */
+:global(html.dark) .page-footer {
   color: #E1E4E8;
 }
 

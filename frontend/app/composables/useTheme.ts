@@ -25,17 +25,25 @@ export function useTheme() {
   const applyTheme = () => {
     if (!isBrowser) return
 
+    const htmlElement = document.documentElement
+    const bodyElement = document.body
+
     if (isDark.value) {
-      // 自定义深色主题
-      document.documentElement.classList.add('dark')
-      // Arco Design 暗黑模式
-      document.body.setAttribute('arco-theme', 'dark')
+      // 深色主题
+      htmlElement.classList.add('dark')
+      bodyElement.setAttribute('arco-theme', 'dark')
+      // 移除亮色主题类
+      htmlElement.classList.remove('light')
     } else {
       // 亮色主题
-      document.documentElement.classList.remove('dark')
-      // Arco Design 亮色模式
-      document.body.removeAttribute('arco-theme')
+      htmlElement.classList.remove('dark')
+      htmlElement.classList.add('light')
+      // 移除 Arco Design 暗黑模式
+      bodyElement.removeAttribute('arco-theme')
     }
+
+    // 触发自定义事件，通知其他组件主题已改变
+    window.dispatchEvent(new CustomEvent('theme-change', { detail: { isDark: isDark.value } }))
   }
 
   // 切换主题

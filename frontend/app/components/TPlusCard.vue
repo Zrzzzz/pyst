@@ -165,19 +165,27 @@ const handleEdit = () => {
 
 <style scoped>
 .t-plus-card {
-  background: linear-gradient(135deg, rgba(21, 26, 33, 0.7) 0%, rgba(15, 23, 42, 0.7) 100%);
+  background: linear-gradient(135deg, rgba(248, 249, 250, 0.8) 0%, rgba(243, 244, 246, 0.8) 100%);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(41, 98, 255, 0.15);
   border-radius: 12px;
   padding: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 0.875rem;
   position: relative;
   overflow: hidden;
 }
 
-:global(.dark) .t-plus-card {
+/* 亮色模式 */
+:global(html:not(.dark)) .t-plus-card {
+  background: linear-gradient(135deg, rgba(248, 249, 250, 0.9) 0%, rgba(243, 244, 246, 0.9) 100%);
+  border: 1px solid rgba(41, 98, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 深色模式 */
+:global(html.dark) .t-plus-card {
   background: linear-gradient(135deg, rgba(21, 26, 33, 0.7) 0%, rgba(15, 23, 42, 0.7) 100%);
   border: 1px solid rgba(41, 98, 255, 0.15);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -275,13 +283,19 @@ const handleEdit = () => {
 }
 
 .t-plus-label {
-  color: #94a3b8;
+  color: #6B7280;
   font-weight: 500;
   min-width: 85px;
   flex-shrink: 0;
 }
 
-:global(.dark) .t-plus-label {
+/* 亮色模式 */
+:global(html:not(.dark)) .t-plus-label {
+  color: #6B7280;
+}
+
+/* 深色模式 */
+:global(html.dark) .t-plus-label {
   color: #94a3b8;
 }
 
@@ -289,10 +303,16 @@ const handleEdit = () => {
   font-weight: 700;
   text-align: right;
   font-family: 'Monaco', 'Courier New', monospace;
-  color: #f1f5f9;
+  color: #1F2937;
 }
 
-:global(.dark) .t-plus-value {
+/* 亮色模式 */
+:global(html:not(.dark)) .t-plus-value {
+  color: #1F2937;
+}
+
+/* 深色模式 */
+:global(html.dark) .t-plus-value {
   color: #f1f5f9;
 }
 
@@ -327,24 +347,28 @@ const handleEdit = () => {
   transition: all 0.2s ease;
 }
 
-.abnormal-badge.yes {
+/* 亮色模式 */
+:global(html:not(.dark)) .abnormal-badge.yes {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   color: #dc2626;
   box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
 }
 
-:global(.dark) .abnormal-badge.yes {
+/* 深色模式 */
+:global(html.dark) .abnormal-badge.yes {
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.2) 0%, rgba(220, 38, 38, 0.3) 100%);
   color: #f87171;
 }
 
-.abnormal-badge.no {
+/* 亮色模式 */
+:global(html:not(.dark)) .abnormal-badge.no {
   background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
   color: #059669;
   box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
 }
 
-:global(.dark) .abnormal-badge.no {
+/* 深色模式 */
+:global(html.dark) .abnormal-badge.no {
   background: linear-gradient(135deg, rgba(5, 150, 105, 0.2) 0%, rgba(5, 150, 105, 0.3) 100%);
   color: #4ade80;
 }

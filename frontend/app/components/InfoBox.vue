@@ -95,13 +95,19 @@ withDefaults(defineProps<Props>(), {
 
 .info-text {
   flex: 1;
-  color: #EAECEF;
+  color: #1F2937;
   font-size: 0.9375rem;
   line-height: 1.6;
   font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
 }
 
-:global(.dark) .info-text {
+/* 亮色模式 */
+:global(html:not(.dark)) .info-text {
+  color: #1F2937;
+}
+
+/* 深色模式 */
+:global(html.dark) .info-text {
   color: #EAECEF;
 }
 

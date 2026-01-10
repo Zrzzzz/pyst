@@ -279,17 +279,25 @@ const getChangeClass = (change: number | undefined) => {
 <style scoped>
 .stock-table-container {
   width: 100%;
-  background: rgba(21, 26, 33, 0.7);
+  background: rgba(248, 249, 250, 0.8);
   backdrop-filter: blur(12px);
   border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 20px rgba(41, 98, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 0 20px rgba(41, 98, 255, 0.08);
   border: 1px solid rgba(41, 98, 255, 0.15);
   transition: all 0.3s ease;
   overflow-x: auto;
 }
 
-:global(.dark) .stock-table-container {
+/* 亮色模式 */
+:global(html:not(.dark)) .stock-table-container {
+  background: rgba(248, 249, 250, 0.9);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 0 20px rgba(41, 98, 255, 0.08);
+  border: 1px solid rgba(41, 98, 255, 0.15);
+}
+
+/* 深色模式 */
+:global(html.dark) .stock-table-container {
   background: rgba(21, 26, 33, 0.7);
   border: 1px solid rgba(41, 98, 255, 0.15);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 20px rgba(41, 98, 255, 0.1);
@@ -425,13 +433,9 @@ const getChangeClass = (change: number | undefined) => {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  color: #EAECEF;
+  color: var(--text-primary);
   transition: color 0.2s ease;
   font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-}
-
-:global(.dark) .stock-cell {
-  color: #EAECEF;
 }
 
 .stock-cell.rank {
@@ -535,23 +539,37 @@ const getChangeClass = (change: number | undefined) => {
 
 /* 表格数据高亮样式 */
 .change-highlight {
-  color: #dc2626;
+  color: #DC2626;
   font-weight: 600;
-  text-shadow: 0 0 8px rgba(220, 38, 38, 0.2);
+  text-shadow: 0 0 8px rgba(220, 38, 38, 0.15);
 }
 
-:global(.dark) .change-highlight {
+/* 亮色模式 */
+:global(html:not(.dark)) .change-highlight {
+  color: #DC2626;
+  text-shadow: 0 0 8px rgba(220, 38, 38, 0.15);
+}
+
+/* 深色模式 */
+:global(html.dark) .change-highlight {
   color: #f87171;
   text-shadow: 0 0 8px rgba(248, 113, 113, 0.2);
 }
 
 .deviation-highlight {
-  color: #dc2626;
+  color: #DC2626;
   font-weight: 700;
-  text-shadow: 0 0 8px rgba(220, 38, 38, 0.2);
+  text-shadow: 0 0 8px rgba(220, 38, 38, 0.15);
 }
 
-:global(.dark) .deviation-highlight {
+/* 亮色模式 */
+:global(html:not(.dark)) .deviation-highlight {
+  color: #DC2626;
+  text-shadow: 0 0 8px rgba(220, 38, 38, 0.15);
+}
+
+/* 深色模式 */
+:global(html.dark) .deviation-highlight {
   color: #f87171;
   text-shadow: 0 0 8px rgba(248, 113, 113, 0.2);
 }
@@ -572,25 +590,37 @@ const getChangeClass = (change: number | undefined) => {
 }
 
 .t-plus-two-label {
-  color: #94a3b8;
+  color: #6B7280;
   font-weight: 600;
   font-size: 0.75rem;
   min-width: 30px;
   text-align: right;
 }
 
-:global(.dark) .t-plus-two-label {
+/* 亮色模式 */
+:global(html:not(.dark)) .t-plus-two-label {
+  color: #6B7280;
+}
+
+/* 深色模式 */
+:global(html.dark) .t-plus-two-label {
   color: #94a3b8;
 }
 
 .t-plus-two-value {
-  color: #dc2626;
+  color: #DC2626;
   font-weight: 700;
   font-family: 'Monaco', 'Courier New', monospace;
   font-size: 0.875rem;
 }
 
-:global(.dark) .t-plus-two-value {
+/* 亮色模式 */
+:global(html:not(.dark)) .t-plus-two-value {
+  color: #DC2626;
+}
+
+/* 深色模式 */
+:global(html.dark) .t-plus-two-value {
   color: #f87171;
 }
 
@@ -633,14 +663,21 @@ const getChangeClass = (change: number | undefined) => {
 }
 
 .stock-detail-row {
-  background: linear-gradient(135deg, rgba(11, 14, 17, 0.5) 0%, rgba(21, 26, 33, 0.5) 100%);
+  background: linear-gradient(135deg, rgba(243, 244, 246, 0.6) 0%, rgba(248, 249, 250, 0.6) 100%);
   border-top: 1px solid rgba(41, 98, 255, 0.1);
   padding: 2rem;
   border-radius: 0 0 12px 12px;
   animation: slideDown 0.3s ease-out;
 }
 
-:global(.dark) .stock-detail-row {
+/* 亮色模式 */
+:global(html:not(.dark)) .stock-detail-row {
+  background: linear-gradient(135deg, rgba(243, 244, 246, 0.8) 0%, rgba(248, 249, 250, 0.8) 100%);
+  border-top: 1px solid rgba(41, 98, 255, 0.1);
+}
+
+/* 深色模式 */
+:global(html.dark) .stock-detail-row {
   background: linear-gradient(135deg, rgba(11, 14, 17, 0.5) 0%, rgba(21, 26, 33, 0.5) 100%);
   border-top: 1px solid rgba(41, 98, 255, 0.1);
 }

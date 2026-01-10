@@ -1,51 +1,17 @@
 <template>
   <div class="watermark-container">
-    <svg class="watermark-svg" :width="width" :height="height">
-      <defs>
-        <pattern :id="patternId" :x="spacing" :y="spacing" :width="spacing" :height="spacing" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
-          <text
-            x="0"
-            y="0"
-            :font-size="fontSize"
-            :fill="color"
-            :opacity="opacity"
-            font-family="Arial, sans-serif"
-            font-weight="500"
-            text-anchor="start"
-          >
-            {{ text }}
-          </text>
-        </pattern>
-      </defs>
-      <rect :width="width" :height="height" :fill="`url(#${patternId})`" />
-    </svg>
+    <div class="watermark-text">{{ text }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-
 interface Props {
   text?: string
-  fontSize?: number
-  spacing?: number
-  opacity?: number
-  color?: string
-  width?: number
-  height?: number
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  text: '股票异动监控系统',
-  fontSize: 16,
-  spacing: 200,
-  opacity: 0.08,
-  color: '#2962FF',
-  width: 1920,
-  height: 1080
+withDefaults(defineProps<Props>(), {
+  text: '小X爱股'
 })
-
-const patternId = computed(() => `watermark-pattern-${Math.random().toString(36).substr(2, 9)}`)
 </script>
 
 <style scoped>
@@ -56,13 +22,30 @@ const patternId = computed(() => `watermark-pattern-${Math.random().toString(36)
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 0;
+  z-index: 15;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.watermark-svg {
-  width: 100%;
-  height: 100%;
+.watermark-text {
+  font-size: 120px;
+  font-weight: 900;
+  font-family: 'Arial Black', 'Microsoft YaHei', sans-serif;
+  letter-spacing: 0.1em;
+  transform: rotate(-45deg);
+  user-select: none;
+  white-space: nowrap;
+  /* 默认亮色模式 */
+  color: rgba(102, 126, 234, 0.12);
+  text-shadow: 2px 2px 8px rgba(102, 126, 234, 0.08);
+}
+
+/* 深色模式 */
+:global(html.dark) .watermark-text {
+  color: rgba(41, 98, 255, 0.15) !important;
+  text-shadow: 2px 2px 8px rgba(41, 98, 255, 0.1) !important;
 }
 </style>
 

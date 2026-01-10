@@ -96,7 +96,13 @@ const handleCancel = () => {
   transition: color 0.2s ease;
 }
 
-:global(.dark) .form-hint {
+/* 亮色模式 */
+:global(html:not(.dark)) .form-hint {
+  color: #6B7280;
+}
+
+/* 深色模式 */
+:global(html.dark) .form-hint {
   color: #94a3b8;
 }
 
@@ -104,11 +110,18 @@ const handleCancel = () => {
 :deep(.arco-modal) {
   border-radius: 16px;
   overflow: hidden;
-  background: rgba(21, 26, 33, 0.95) !important;
+  background: rgba(248, 249, 250, 0.95) !important;
   border: 1px solid rgba(41, 98, 255, 0.15);
 }
 
-:global(.dark) :deep(.arco-modal) {
+/* 亮色模式 */
+:global(html:not(.dark)) :deep(.arco-modal) {
+  background: rgba(248, 249, 250, 0.95) !important;
+  border: 1px solid rgba(41, 98, 255, 0.15);
+}
+
+/* 深色模式 */
+:global(html.dark) :deep(.arco-modal) {
   background: rgba(21, 26, 33, 0.95) !important;
   border: 1px solid rgba(41, 98, 255, 0.15);
 }
@@ -120,12 +133,6 @@ const handleCancel = () => {
   border-bottom: 1px solid rgba(41, 98, 255, 0.15);
 }
 
-:global(.dark) :deep(.arco-modal-header) {
-  background: linear-gradient(135deg, rgba(41, 98, 255, 0.1) 0%, rgba(61, 90, 254, 0.05) 100%);
-  color: #2962FF;
-  border-bottom: 1px solid rgba(41, 98, 255, 0.15);
-}
-
 :deep(.arco-modal-title) {
   color: #2962FF;
   font-weight: 700;
@@ -134,19 +141,36 @@ const handleCancel = () => {
 
 :deep(.arco-modal-body) {
   padding: 2rem;
-  background: rgba(21, 26, 33, 0.95) !important;
-  color: #f1f5f9;
+  background: rgba(248, 249, 250, 0.95) !important;
+  color: #1F2937;
 }
 
-:global(.dark) :deep(.arco-modal-body) {
+/* 亮色模式 */
+:global(html:not(.dark)) :deep(.arco-modal-body) {
+  background: rgba(248, 249, 250, 0.95) !important;
+  color: #1F2937;
+}
+
+/* 深色模式 */
+:global(html.dark) :deep(.arco-modal-body) {
   background: rgba(21, 26, 33, 0.95) !important;
   color: #f1f5f9;
 }
 
 :deep(.arco-modal-footer) {
   padding: 1.5rem 2rem;
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(248, 249, 250, 0.8);
   border-top: 1px solid rgba(41, 98, 255, 0.15);
+}
+
+/* 亮色模式 */
+:global(html:not(.dark)) :deep(.arco-modal-footer) {
+  background: rgba(248, 249, 250, 0.8);
+}
+
+/* 深色模式 */
+:global(html.dark) :deep(.arco-modal-footer) {
+  background: rgba(15, 23, 42, 0.7);
 }
 
 :global(.dark) :deep(.arco-modal-footer) {
@@ -169,42 +193,55 @@ const handleCancel = () => {
   box-shadow: 0 4px 12px rgba(41, 98, 255, 0.2);
 }
 
-:deep(.arco-input-wrapper) {
+/* 亮色模式输入框 */
+:global(html:not(.dark)) :deep(.arco-input-wrapper) {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(41, 98, 255, 0.2) !important;
+}
+
+:global(html:not(.dark)) :deep(.arco-input-wrapper:focus-within) {
+  box-shadow: 0 0 0 3px rgba(41, 98, 255, 0.15);
+  border-color: rgba(41, 98, 255, 0.4) !important;
+}
+
+:global(html:not(.dark)) :deep(.arco-input) {
+  color: #1F2937 !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+:global(html:not(.dark)) :deep(.arco-input::placeholder) {
+  color: rgba(31, 41, 55, 0.4);
+}
+
+:global(html:not(.dark)) :deep(.arco-form-item-label) {
+  color: #6B7280;
+}
+
+/* 深色模式输入框 */
+:global(html.dark) :deep(.arco-input-wrapper) {
   border-radius: 8px;
   transition: all 0.3s ease;
   background: rgba(30, 41, 59, 0.8) !important;
   border: 1px solid rgba(41, 98, 255, 0.3) !important;
 }
 
-:deep(.arco-input-wrapper:focus-within) {
+:global(html.dark) :deep(.arco-input-wrapper:focus-within) {
   box-shadow: 0 0 0 3px rgba(41, 98, 255, 0.2);
   border-color: rgba(41, 98, 255, 0.5) !important;
 }
 
-:global(.dark) :deep(.arco-input-wrapper) {
-  background: rgba(30, 41, 59, 0.8) !important;
-  border: 1px solid rgba(41, 98, 255, 0.3) !important;
-}
-
-:global(.dark) :deep(.arco-input) {
+:global(html.dark) :deep(.arco-input) {
   color: #f1f5f9 !important;
   background: rgba(30, 41, 59, 0.8) !important;
 }
 
-:deep(.arco-input) {
-  color: #f1f5f9 !important;
-  background: rgba(30, 41, 59, 0.8) !important;
-}
-
-:deep(.arco-input::placeholder) {
+:global(html.dark) :deep(.arco-input::placeholder) {
   color: rgba(241, 245, 249, 0.5);
 }
 
-:global(.dark) :deep(.arco-input::placeholder) {
-  color: rgba(241, 245, 249, 0.5);
-}
-
-:deep(.arco-form-item-label) {
+:global(html.dark) :deep(.arco-form-item-label) {
   color: #94a3b8;
 }
 
@@ -213,70 +250,66 @@ const handleCancel = () => {
   background-color: rgba(0, 0, 0, 0.45);
 }
 
-:global(.dark .arco-modal) {
-  background: rgba(21, 26, 33, 0.95) !important;
-  border: 1px solid rgba(41, 98, 255, 0.15);
-}
-
-:global(.arco-modal) {
-  background: rgba(21, 26, 33, 0.95) !important;
-  border: 1px solid rgba(41, 98, 255, 0.15);
-}
-
-:global(.dark .arco-modal-header) {
-  background: linear-gradient(135deg, rgba(41, 98, 255, 0.1) 0%, rgba(61, 90, 254, 0.05) 100%);
-  border-bottom: 1px solid rgba(41, 98, 255, 0.15);
-}
-
 :global(.arco-modal-header) {
   background: linear-gradient(135deg, rgba(41, 98, 255, 0.1) 0%, rgba(61, 90, 254, 0.05) 100%);
   border-bottom: 1px solid rgba(41, 98, 255, 0.15);
 }
 
-:global(.dark .arco-modal-title) {
-  color: #2962FF;
-}
-
 :global(.arco-modal-title) {
   color: #2962FF;
+  font-weight: 700;
 }
 
-:global(.dark .arco-modal-body) {
+/* 亮色模式全局样式 */
+:global(html:not(.dark)) .arco-modal {
+  background: rgba(248, 249, 250, 0.95) !important;
+  border: 1px solid rgba(41, 98, 255, 0.15);
+}
+
+:global(html:not(.dark)) .arco-modal-body {
+  background: rgba(248, 249, 250, 0.95) !important;
+  color: #1F2937;
+}
+
+:global(html:not(.dark)) .arco-modal-footer {
+  background: rgba(248, 249, 250, 0.8);
+  border-top: 1px solid rgba(41, 98, 255, 0.15);
+}
+
+/* 深色模式全局样式 */
+:global(html.dark) .arco-modal {
+  background: rgba(21, 26, 33, 0.95) !important;
+  border: 1px solid rgba(41, 98, 255, 0.15);
+}
+
+:global(html.dark) .arco-modal-body {
   background: rgba(21, 26, 33, 0.95) !important;
   color: #f1f5f9;
 }
 
-:global(.arco-modal-body) {
-  background: rgba(21, 26, 33, 0.95) !important;
-  color: #f1f5f9;
-}
-
-:global(.dark .arco-modal-footer) {
+:global(html.dark) .arco-modal-footer {
   background: rgba(15, 23, 42, 0.7);
   border-top: 1px solid rgba(41, 98, 255, 0.15);
 }
 
-:global(.arco-modal-footer) {
-  background: rgba(15, 23, 42, 0.7);
-  border-top: 1px solid rgba(41, 98, 255, 0.15);
+/* 亮色模式输入框全局样式 */
+:global(html:not(.dark)) .arco-input-number-wrapper {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(41, 98, 255, 0.2) !important;
 }
 
-/* 输入框全局样式 */
-:global(.arco-input-wrapper) {
+:global(html:not(.dark)) .arco-input-number {
+  color: #1F2937 !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 深色模式输入框全局样式 */
+:global(html.dark) .arco-input-number-wrapper {
   background: rgba(30, 41, 59, 0.8) !important;
   border: 1px solid rgba(41, 98, 255, 0.3) !important;
 }
 
-:global(.arco-input) {
-  color: #f1f5f9 !important;
-  background: rgba(30, 41, 59, 0.8) !important;
-}
-
-:global(.arco-input-number-wrapper) {
-  background: rgba(30, 41, 59, 0.8) !important;
-}
-
-:global(.arco-input-number) {
+:global(html.dark) .arco-input-number {
   color: #f1f5f9 !important;
   background: rgba(30, 41, 59, 0.8) !important;
 }
