@@ -1,7 +1,7 @@
 """
 Flask 应用主程序
-提供 Web 界面和 API 接口
-前后端分离架构
+提供 API 接口和静态网页
+使用 Jinja2 模板渲染静态网页
 """
 import os
 from datetime import datetime
@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 # 必须在导入其他模块之前加载环境变量
 load_dotenv()
 
-from flask import Flask, render_template, jsonify
+from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 import logger_config  # 必须在导入 logger 之前
 from loguru import logger
@@ -20,10 +20,14 @@ from trade_calendar import TradeCalendarManager
 from monitor import INDEX_CODES
 from cache_manager import CacheManager
 from apscheduler.schedulers.background import BackgroundScheduler
-from config import COPYRIGHT, WATERMARK, CHANGELOG
+from config import CHANGELOG, COPYRIGHT, WATERMARK
 
 # 初始化 Flask 应用
-app = Flask(__name__, static_folder='static', static_url_path='/static')
+# 配置静态文件和模板目录
+app = Flask(__name__,
+            static_folder='static',
+            static_url_path='/static',
+            template_folder='templates')
 app.config['JSON_AS_ASCII'] = False
 
 # 启用 CORS
@@ -161,16 +165,20 @@ def refresh_data():
         logger.error(f"数据刷新失败: {e}")
 
 
-# ============ 静态页面路由 ============
+# ============ 配置数据 ============
+# 页面配置
+PAGE_CONFIG = {
+    'copyright': COPYRIGHT,
+    'watermark': WATERMARK,
+    'changelog': CHANGELOG
+}
+
+# ============ 页面路由 ============
 
 @app.route('/')
 def index():
-    """首页 - 返回静态 HTML"""
-    return render_template('index.html',
-                         copyright=COPYRIGHT,
-                         watermark=WATERMARK,
-                         changelog=CHANGELOG)
-
+    """主页 - 显示10日和30日偏离值榜"""
+    return render_template('index.html', **PAGE_CONFIG)
 
 # ============ API 路由 ============
 
@@ -203,7 +211,8 @@ def api_stocks_both():
                     '10': len(cached_data.get('stocks_10', [])),
                     '30': len(cached_data.get('stocks_30', []))
                 },
-                'from_cache': True
+                'from_cache': True,
+                'changelog': get_changelog()
             })
 
         # 缓存未命中，执行 refresh_data 填充缓存
@@ -222,7 +231,8 @@ def api_stocks_both():
                     '10': len(cached_data.get('stocks_10', [])),
                     '30': len(cached_data.get('stocks_30', []))
                 },
-                'from_cache': True
+                'from_cache': True,
+                'changelog': get_changelog()
             })
 
         # 缓存仍未命中，返回空数据
@@ -235,15 +245,22 @@ def api_stocks_both():
                 '10': 0,
                 '30': 0
             },
-            'from_cache': False
+            'from_cache': False,
+            'changelog': get_changelog()
         })
     except Exception as e:
         logger.error(f"API 获取双榜数据失败: {e}")
         return jsonify({
             'code': 500,
             'message': str(e),
-            'data': {'stocks_10': [], 'stocks_30': []}
+            'data': {'stocks_10': [], 'stocks_30': []},
+            'changelog': get_changelog()
         }), 500
+
+
+def get_changelog():
+    """获取更新日志 - 从 config.py 读取"""
+    return CHANGELOG
 
 
 # 启动定时任务（无论用什么方式启动都会执行）
@@ -251,11 +268,12 @@ scheduler.add_job(refresh_data, 'cron', hour=17, minute=0)
 scheduler.start()
 
 # 应用启动时立即刷新一次数据
-refresh_data()
+# refresh_data()
 logger.info("定时任务已启动，每天 17:00 自动刷新数据")
 
 
 if __name__ == '__main__':
-    logger.info("Flask 应用启动")
+    logger.info("Flask 应用启动 - 使用静态网页模式")
+    logger.info("访问地址: http://127.0.0.1:5000")
     app.run(debug=True, host='127.0.0.1', port=5000)
 

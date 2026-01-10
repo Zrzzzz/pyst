@@ -1,0 +1,132 @@
+// ============================================
+// SCSS Mixins - 常用样式混合
+// ============================================
+
+// 玻璃拟态效果
+@mixin glass-effect($bg-opacity: 0.7, $blur: 12px) {
+  background: rgba(21, 26, 33, $bg-opacity);
+  backdrop-filter: blur($blur);
+  border: 1px solid rgba(41, 98, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(41, 98, 255, 0.1);
+}
+
+// 霓虹发光效果
+@mixin neon-glow($color, $intensity: 0.5) {
+  text-shadow: 0 0 10px rgba($color, $intensity);
+}
+
+// 蓝色发光边框
+@mixin glow-border($color: rgba(41, 98, 255, 0.15)) {
+  border: 1px solid $color;
+  box-shadow: 0 0 8px rgba(41, 98, 255, 0.2);
+}
+
+// 悬停效果
+@mixin hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(41, 98, 255, 0.25), 0 0 30px rgba(41, 98, 255, 0.12);
+  }
+}
+
+// 响应式网格
+@mixin responsive-grid($min-width: 220px, $gap: 1rem) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax($min-width, 1fr));
+  gap: $gap;
+}
+
+// 弹性中心
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// 弹性间距
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// 文字截断
+@mixin text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 多行文字截断
+@mixin text-truncate-lines($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// 绝对居中
+@mixin absolute-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+// 响应式字体
+@mixin responsive-font($mobile, $tablet, $desktop, $breakpoint-md: 768px, $breakpoint-lg: 1024px) {
+  font-size: $mobile;
+
+  @media (min-width: $breakpoint-md) {
+    font-size: $tablet;
+  }
+
+  @media (min-width: $breakpoint-lg) {
+    font-size: $desktop;
+  }
+}
+
+// 响应式间距
+@mixin responsive-spacing($mobile, $tablet, $desktop, $breakpoint-md: 768px, $breakpoint-lg: 1024px) {
+  padding: $mobile;
+
+  @media (min-width: $breakpoint-md) {
+    padding: $tablet;
+  }
+
+  @media (min-width: $breakpoint-lg) {
+    padding: $desktop;
+  }
+}
+
+// 渐变文字
+@mixin gradient-text($from: #2962FF, $to: #3D5AFE) {
+  background: linear-gradient(135deg, $from 0%, $to 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// 渐变背景
+@mixin gradient-bg($from: #0B0E11, $to: #151A21) {
+  background: linear-gradient(135deg, $from 0%, $to 100%);
+}
+
+// 边框渐变
+@mixin gradient-border($from: #2962FF, $to: #3D5AFE, $width: 1px) {
+  border: $width solid;
+  border-image: linear-gradient(135deg, $from 0%, $to 100%) 1;
+}
+
+// 动画延迟
+@mixin animation-delay($delay) {
+  animation-delay: $delay;
+}
+
+// 过渡效果
+@mixin transition($properties: all, $duration: 0.3s, $easing: cubic-bezier(0.4, 0, 0.2, 1)) {
+  transition: $properties $duration $easing;
+}
+
