@@ -1,10 +1,10 @@
 # ============ 前端构建阶段 ============
-FROM node:18-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/react-frontend
 
 # ---------- 安装 pnpm（使用 corepack，官方推荐） ----------
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # ---------- 配置国内镜像 ----------
 RUN pnpm config set registry https://registry.npmmirror.com && \
@@ -44,7 +44,7 @@ RUN uv sync --frozen --no-dev
 COPY . .
 
 # ---------- 前端构建产物 ----------
-COPY --from=frontend-builder /app/react-frontend/templates ./templates
+COPY --from=frontend-builder /app/templates ./templates
 
 EXPOSE 5000
 

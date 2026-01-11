@@ -85,8 +85,8 @@ export const useStockStore = create<StockStore>((set, get) => ({
       if (stockMap.has(stock.ts_code)) {
         // 股票同时存在于两个榜单，取可能涨幅的较小值
         const existingStock = stockMap.get(stock.ts_code)!
-        const stock10PossibleChange = existingStock.tPlusData?.[1]?.possibleChange ?? 0
-        const stock30PossibleChange = stock.tPlusData?.[1]?.possibleChange ?? 0
+        const stock10PossibleChange = existingStock.tPlusData?.[5]?.possibleChange ?? 0
+        const stock30PossibleChange = stock.tPlusData?.[5]?.possibleChange ?? 0
 
         // 使用较小的可能涨幅，但保留原有的其他数据
         const mergedStock = {
@@ -96,7 +96,7 @@ export const useStockStore = create<StockStore>((set, get) => ({
         stockMap.set(stock.ts_code, mergedStock)
       } else {
         // 股票只存在于 30日榜
-        const possibleChange = stock.tPlusData?.[1]?.possibleChange ?? 0
+        const possibleChange = stock.tPlusData?.[5]?.possibleChange ?? 0
         const mergedStock = {
           ...stock,
           mergedPossibleChange: possibleChange
@@ -108,7 +108,7 @@ export const useStockStore = create<StockStore>((set, get) => ({
     // 对于只在 10日榜的股票，添加 mergedPossibleChange
     stocks10.forEach(stock => {
       if (!stocks30.some(s => s.ts_code === stock.ts_code)) {
-        const possibleChange = stock.tPlusData?.[1]?.possibleChange ?? 0
+        const possibleChange = stock.tPlusData?.[5]?.possibleChange ?? 0
         const mergedStock = {
           ...stock,
           mergedPossibleChange: possibleChange
