@@ -25,8 +25,8 @@ from config import CHANGELOG, COPYRIGHT, WATERMARK
 # 初始化 Flask 应用
 # 配置静态文件和模板目录
 app = Flask(__name__,
-            static_folder='static',
-            static_url_path='/static',
+            static_folder='templates/assets',
+            static_url_path='/assets',
             template_folder='templates')
 app.config['JSON_AS_ASCII'] = False
 
@@ -138,13 +138,13 @@ def refresh_data():
             logger.info("获取10日榜数据...")
             results_10 = monitor.query_stocks(n=10, threshold=100)
             results_10.sort(key=lambda x: x['deviation'], reverse=True)
-            results_10 = results_10[:30]
+            results_10 = results_10[:50]
 
             # 获取30日数据
             logger.info("获取30日榜数据...")
             results_30 = monitor.query_stocks(n=30, threshold=200)
             results_30.sort(key=lambda x: x['deviation'], reverse=True)
-            results_30 = results_30[:30]
+            results_30 = results_30[:50]
 
             # 缓存数据
             cache_data = {
@@ -211,8 +211,7 @@ def api_stocks_both():
                     '10': len(cached_data.get('stocks_10', [])),
                     '30': len(cached_data.get('stocks_30', []))
                 },
-                'from_cache': True,
-                'changelog': get_changelog()
+                'from_cache': True
             })
 
         # 缓存未命中，执行 refresh_data 填充缓存
@@ -231,8 +230,7 @@ def api_stocks_both():
                     '10': len(cached_data.get('stocks_10', [])),
                     '30': len(cached_data.get('stocks_30', []))
                 },
-                'from_cache': True,
-                'changelog': get_changelog()
+                'from_cache': True
             })
 
         # 缓存仍未命中，返回空数据
@@ -245,16 +243,32 @@ def api_stocks_both():
                 '10': 0,
                 '30': 0
             },
-            'from_cache': False,
-            'changelog': get_changelog()
+            'from_cache': False
         })
     except Exception as e:
         logger.error(f"API 获取双榜数据失败: {e}")
         return jsonify({
             'code': 500,
             'message': str(e),
-            'data': {'stocks_10': [], 'stocks_30': []},
-            'changelog': get_changelog()
+            'data': {'stocks_10': [], 'stocks_30': []}
+        }), 500
+
+
+@app.route('/api/changelog')
+def api_changelog():
+    """API: 获取更新日志"""
+    try:
+        return jsonify({
+            'code': 0,
+            'message': 'success',
+            'data': CHANGELOG
+        })
+    except Exception as e:
+        logger.error(f"API 获取更新日志失败: {e}")
+        return jsonify({
+            'code': 500,
+            'message': str(e),
+            'data': []
         }), 500
 
 
@@ -268,12 +282,30 @@ scheduler.add_job(refresh_data, 'cron', hour=17, minute=0)
 scheduler.start()
 
 # 应用启动时立即刷新一次数据
-# refresh_data()
+refresh_data()
 logger.info("定时任务已启动，每天 17:00 自动刷新数据")
 
 
+# ============ SPA 路由处理 ============
+# 所有非 API 请求都返回 index.html，由前端路由处理
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_spa(path):
+    """SPA 路由处理 - 返回 index.html"""
+    # 如果请求的是 API 路由，不处理（由上面的 @app.route 处理）
+    if path.startswith('api/'):
+        return jsonify({'code': 404, 'message': 'Not Found'}), 404
+
+    # 如果请求的是静态资源，由 Flask 自动处理
+    if path and os.path.exists(os.path.join(app.template_folder, path)):
+        return app.send_static_file(path)
+
+    # 其他所有请求返回 index.html，由前端路由处理
+    return render_template('index.html', **PAGE_CONFIG)
+
+
 if __name__ == '__main__':
-    logger.info("Flask 应用启动 - 使用静态网页模式")
+    logger.info("Flask 应用启动 - 使用前后端一体化模式")
     logger.info("访问地址: http://127.0.0.1:5000")
     app.run(debug=True, host='127.0.0.1', port=5000)
 

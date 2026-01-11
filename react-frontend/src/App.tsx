@@ -6,7 +6,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { ConfigProvider } from '@arco-design/web-react'
 import { useTheme } from '@/hooks/useTheme'
 import Home from '@/pages/Home'
-import Info from '@/pages/Info'
 import '@/styles/main.scss'
 
 function App() {
@@ -38,7 +37,6 @@ function App() {
         <div className="app-container">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/info" element={<Info />} />
           </Routes>
         </div>
       </Router>

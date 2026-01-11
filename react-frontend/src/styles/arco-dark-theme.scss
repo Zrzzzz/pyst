@@ -1,0 +1,316 @@
+// ============================================
+// Arco Design 深色主题覆盖样式
+// ============================================
+
+// 深色模式下的 Card 组件
+html.arco-theme-dark {
+  .arco-card {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+
+    .arco-card-header {
+      background-color: transparent;
+      border-bottom-color: var(--border-color);
+      color: var(--text-primary);
+    }
+
+    .arco-card-header-title {
+      color: var(--text-primary) !important;
+    }
+
+    .arco-card-body {
+      color: var(--text-primary);
+    }
+
+    .arco-card-meta-title {
+      color: var(--text-primary);
+    }
+
+    .arco-card-meta-description {
+      color: var(--text-muted);
+    }
+
+    // 确保 Card 标题中的文本颜色正确
+    span {
+      color: var(--text-primary);
+
+      // 保护 positive 和 negative 类的颜色
+      &.positive {
+        color: #dc2626 !important;
+      }
+
+      &.negative {
+        color: #4ade80 !important;
+      }
+    }
+  }
+
+  // 深色模式下的 Alert 组件
+  .arco-alert {
+    background-color: rgba(21, 26, 33, 0.8);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+
+    &.arco-alert-info {
+      background-color: rgba(41, 98, 255, 0.1);
+      border-color: rgba(41, 98, 255, 0.3);
+
+      .arco-alert-icon {
+        color: #2962FF;
+      }
+
+      .arco-alert-title {
+        color: var(--text-primary);
+      }
+
+      .arco-alert-content {
+        color: var(--text-secondary);
+      }
+    }
+
+    &.arco-alert-success {
+      background-color: rgba(46, 189, 133, 0.1);
+      border-color: rgba(46, 189, 133, 0.3);
+
+      .arco-alert-icon {
+        color: #2EBD85;
+      }
+    }
+
+    &.arco-alert-warning {
+      background-color: rgba(246, 165, 0, 0.1);
+      border-color: rgba(246, 165, 0, 0.3);
+
+      .arco-alert-icon {
+        color: #F6A500;
+      }
+    }
+
+    &.arco-alert-error {
+      background-color: rgba(246, 70, 93, 0.1);
+      border-color: rgba(246, 70, 93, 0.3);
+
+      .arco-alert-icon {
+        color: #F6465D;
+      }
+    }
+  }
+
+  // 深色模式下的 Divider 组件
+  .arco-divider {
+    background-color: var(--border-color);
+    color: var(--text-muted);
+  }
+
+  // 深色模式下的 Tag 组件
+  .arco-tag {
+    background-color: rgba(41, 98, 255, 0.15);
+    border-color: rgba(41, 98, 255, 0.3);
+    color: #2962FF;
+
+    &.arco-tag-blue {
+      background-color: rgba(41, 98, 255, 0.15);
+      border-color: rgba(41, 98, 255, 0.3);
+      color: #2962FF;
+    }
+  }
+
+  // 深色模式下的 Button 组件
+  .arco-btn {
+    &.arco-btn-primary {
+      background-color: #2962FF;
+      border-color: #2962FF;
+      color: #FFFFFF;
+
+      &:hover {
+        background-color: #3D5AFE;
+        border-color: #3D5AFE;
+      }
+    }
+
+    &.arco-btn-secondary {
+      background-color: transparent;
+      border-color: var(--border-color);
+      color: var(--text-primary);
+
+      &:hover {
+        background-color: rgba(41, 98, 255, 0.1);
+        border-color: rgba(41, 98, 255, 0.3);
+      }
+    }
+  }
+
+  // 深色模式下的 Pagination 组件
+  .arco-pagination {
+    color: var(--text-primary);
+
+    .arco-pagination-item {
+      background-color: transparent;
+      border-color: var(--border-color);
+      color: var(--text-primary);
+
+      &:hover {
+        border-color: rgba(41, 98, 255, 0.3);
+        background-color: rgba(41, 98, 255, 0.05);
+      }
+
+      &.arco-pagination-item-active {
+        background-color: #2962FF;
+        border-color: #2962FF;
+        color: #FFFFFF;
+      }
+    }
+
+    .arco-pagination-prev,
+    .arco-pagination-next {
+      color: var(--text-primary);
+
+      &:hover {
+        color: #2962FF;
+      }
+    }
+  }
+
+  // 深色模式下的 Spin 组件
+  .arco-spin {
+    color: #2962FF;
+  }
+
+  // 深色模式下的 Drawer 组件
+  .arco-drawer {
+    background-color: var(--bg-primary);
+
+    .arco-drawer-header {
+      background-color: var(--bg-primary);
+      border-bottom-color: var(--border-color);
+    }
+
+    .arco-drawer-title {
+      color: var(--text-primary);
+    }
+
+    .arco-drawer-body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    .arco-drawer-close-btn {
+      color: var(--text-primary);
+
+      &:hover {
+        color: #2962FF;
+      }
+    }
+  }
+
+  // 深色模式下的 Modal 组件
+  .arco-modal {
+    background-color: var(--bg-primary);
+    border-color: var(--border-color);
+
+    .arco-modal-header {
+      background-color: var(--bg-primary);
+      border-bottom-color: var(--border-color);
+    }
+
+    .arco-modal-title {
+      color: var(--text-primary);
+    }
+
+    .arco-modal-close-btn {
+      color: var(--text-muted);
+
+      &:hover {
+        color: var(--text-primary);
+      }
+    }
+
+    .arco-modal-body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    .arco-modal-footer {
+      background-color: var(--bg-primary);
+      border-top-color: var(--border-color);
+    }
+  }
+
+  // 深色模式下的 Form 组件
+  .arco-form {
+    color: var(--text-primary);
+
+    .arco-form-item-label-text {
+      color: var(--text-primary);
+    }
+
+    .arco-form-item-label-required-mark {
+      color: #F6465D;
+    }
+
+    .arco-form-item-help {
+      color: var(--text-muted);
+    }
+
+    .arco-form-item-error {
+      color: #F6465D;
+    }
+  }
+
+  // 深色模式下的 InputNumber 组件
+  .arco-input-number {
+    background-color: rgba(41, 98, 255, 0.08);
+    border-color: rgba(41, 98, 255, 0.2);
+    color: var(--text-primary);
+
+    &:hover {
+      border-color: rgba(41, 98, 255, 0.3);
+    }
+
+    &:focus,
+    &.arco-input-focus {
+      border-color: rgba(41, 98, 255, 0.5);
+      box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.1);
+    }
+
+    .arco-input-number-input {
+      background-color: transparent;
+      color: var(--text-primary);
+
+      &::placeholder {
+        color: var(--text-muted);
+      }
+    }
+
+    .arco-input-number-button {
+      color: var(--text-primary);
+
+      &:hover {
+        background-color: rgba(41, 98, 255, 0.1);
+      }
+    }
+  }
+
+  // 深色模式下的 Input 组件
+  .arco-input {
+    background-color: rgba(41, 98, 255, 0.08);
+    border-color: rgba(41, 98, 255, 0.2);
+    color: var(--text-primary);
+
+    &:hover {
+      border-color: rgba(41, 98, 255, 0.3);
+    }
+
+    &:focus,
+    &.arco-input-focus {
+      border-color: rgba(41, 98, 255, 0.5);
+      box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.1);
+    }
+
+    &::placeholder {
+      color: var(--text-muted);
+    }
+  }
+}
+

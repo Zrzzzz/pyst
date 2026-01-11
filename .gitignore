@@ -13,3 +13,5 @@ wheels/
 .idea/
 
 *.db
+
+.vscode/

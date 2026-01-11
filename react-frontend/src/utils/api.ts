@@ -59,6 +59,11 @@ export interface StockData {
   // 索引（前端添加）
   index?: number
 
+  // T+n 计算相关
+  baseDays?: number // 基础天数（10 或 30）
+  extraPercent?: number[] // T+1 到 T+5 的涨幅百分比
+  tPlusData?: Record<number, any> // T+1 到 T+5 的计算数据
+
   [key: string]: any
 }
 
@@ -71,7 +76,6 @@ export interface ChangelogItem {
 export interface BothStocksResponse {
   stocks_10: StockData[]
   stocks_30: StockData[]
-  changelog?: ChangelogItem[]
 }
 
 // ============ API 实例 ============
@@ -103,5 +107,17 @@ export const getBothStocks = async (): Promise<ApiResponse<BothStocksResponse>> 
   }
 }
 
+/**
+ * 获取更新日志
+ */
+export const getChangelog = async (): Promise<ApiResponse<ChangelogItem[]>> => {
+  try {
+    const { data } = await api.get<ApiResponse<ChangelogItem[]>>('/changelog')
+    return data
+  } catch (error) {
+    console.error('获取更新日志失败:', error)
+    throw error
+  }
+}
+
 export default api
-export type { ApiResponse, PriceData, StockData, ChangelogItem, BothStocksResponse }

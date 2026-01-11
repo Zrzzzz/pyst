@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Node
+node_modules
+npm-debug.log
+pnpm-lock.yaml
+yarn.lock
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.Python
+env/
+venv/
+.venv
+dist/
+build/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# React
+react-frontend/dist
+react-frontend/node_modules
+
+# Misc
+.env
+.env.local
+.env.*.local
+*.log
+.cache
+.pytest_cache
+.coverage
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+

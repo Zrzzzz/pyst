@@ -53,7 +53,7 @@ export const EditModal: React.FC<EditModalProps> = ({
       visible={visible}
       onOk={handleSave}
       onCancel={handleCancel}
-      width={400}
+      style={{ width: '400px' }}
     >
       <Form form={form} layout="vertical">
         <Form.Item label="修改涨幅 (%)" required>

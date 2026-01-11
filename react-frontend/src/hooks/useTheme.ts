@@ -25,8 +25,10 @@ export function useTheme() {
   const applyTheme = (dark: boolean) => {
     if (dark) {
       document.documentElement.classList.add('dark')
+      document.documentElement.classList.add('arco-theme-dark')
     } else {
       document.documentElement.classList.remove('dark')
+      document.documentElement.classList.remove('arco-theme-dark')
     }
   }
 

@@ -2,91 +2,184 @@
  * 首页 - 股票异动监控
  */
 import React, { useState, useEffect } from 'react'
-import { Button } from '@arco-design/web-react'
+import { Layout, Button, Card, Space, Alert, Tag, Divider } from '@arco-design/web-react'
 import { useStockStore } from '@/stores/stockStore'
 import StockTable from '@/components/StockTable'
-import InfoBox from '@/components/InfoBox'
 import ThemeToggle from '@/components/ThemeToggle'
 import Changelog from '@/components/Changelog'
+import Watermark from '@/components/Watermark'
 import './Home.scss'
+
+const { Header, Content, Footer } = Layout
 
 export const Home: React.FC = () => {
   const [showChangelog, setShowChangelog] = useState(false)
-  const stockStore = useStockStore()
+  const [showMergedStocks, setShowMergedStocks] = useState(false)
+  const loading = useStockStore((state) => state.loading)
+  const changelog = useStockStore((state) => state.changelog)
+  const stocks10 = useStockStore((state) => state.stocks10)
+  const stocks30 = useStockStore((state) => state.stocks30)
+  const getMergedStocks = useStockStore((state) => state.getMergedStocks)
+
+  // 计算排序后的数据
+  const sortedStocks10 = React.useMemo(() => {
+    return [...stocks10]
+      .sort((a, b) => (b.deviation || 0) - (a.deviation || 0))
+      .map((stock, index) => ({ ...stock, index: index + 1 }))
+  }, [stocks10])
+
+  const sortedStocks30 = React.useMemo(() => {
+    return [...stocks30]
+      .sort((a, b) => (b.deviation || 0) - (a.deviation || 0))
+      .map((stock, index) => ({ ...stock, index: index + 1 }))
+  }, [stocks30])
+
+  const mergedStocks = React.useMemo(() => {
+    return getMergedStocks()
+  }, [stocks10, stocks30, getMergedStocks])
 
   useEffect(() => {
-    stockStore.fetchBothStocks()
+    const fetchData = async () => {
+      console.log('开始获取数据...')
+      try {
+        await useStockStore.getState().fetchBothStocks()
+        console.log('股票数据获取成功:', {
+          stocks10: useStockStore.getState().stocks10.length,
+          stocks30: useStockStore.getState().stocks30.length
+        })
+      } catch (err) {
+        console.error('股票数据获取失败:', err)
+      }
+
+      try {
+        await useStockStore.getState().fetchChangelog()
+        console.log('更新日志获取成功:', useStockStore.getState().changelog.length)
+      } catch (err) {
+        console.error('更新日志获取失败:', err)
+      }
+    }
+
+    fetchData()
   }, [])
 
   return (
-    <div className="home-page">
+    <Layout className="home-layout">
       {/* 页头 */}
-      <div className="page-header">
-        <div className="header-content">
-          <div className="header-text">
-            <h1 className="page-title">股票异动监控</h1>
-            <p className="page-subtitle">实时监控股票涨幅和偏离值</p>
+      <Header className="home-header">
+        <div className="header-container">
+          <div className="header-left">
+            <h1 className="header-title">股票异动监控</h1>
+            <p className="header-subtitle">实时监控股票涨幅和偏离值</p>
           </div>
-          <div className="header-actions">
-            <Button type="text" onClick={() => setShowChangelog(true)} className="changelog-btn">
+          <Space>
+            <Button
+              type={showMergedStocks ? 'secondary' : 'primary'}
+              onClick={() => setShowMergedStocks(!showMergedStocks)}
+            >
+              {showMergedStocks ? '今天看什么' : '明天买什么'}
+            </Button>
+            <Button type="primary" onClick={() => setShowChangelog(true)}>
               📝 更新日志
             </Button>
-          </div>
+          </Space>
         </div>
-      </div>
+      </Header>
 
-      {/* 偏离值说明 */}
-      <InfoBox
-        title="偏离值"
-        content="偏离值 = 股票涨幅(%) - 指数涨幅(%) | 正值表示股票强于指数，负值表示股票弱于指数"
-      />
+      {/* 主内容 */}
+      <Content className="home-content">
+        {showMergedStocks ? (
+          <>
+            {/* 合并榜单 - 明天买什么 */}
+            <Alert
+              type="info"
+              title="明天买什么"
+              content="综合10日和30日榜单，按可能涨幅排序，取两个榜单中可能涨幅的较小值"
+              closable={false}
+              style={{ marginBottom: '2rem' }}
+            />
 
-      {/* 10日榜 */}
-      <div className="section">
-        <div className="section-header">
-          <h2 className="section-title">📊 10日偏离值榜 Top 30</h2>
-          <span className="count-badge">{stockStore.count10}</span>
-        </div>
+            <Card
+              title={
+                <Space>
+                  <span>🚀 明天买什么 Top 30</span>
+                  <Tag color="blue">{mergedStocks.length}</Tag>
+                </Space>
+              }
+            >
+              <StockTable
+                stocks={mergedStocks}
+                loading={loading}
+                isMergedView={true}
+              />
+            </Card>
+          </>
+        ) : (
+          <>
+            {/* 原有的两个分离榜单 */}
+            <Alert
+              type="info"
+              title="偏离值说明"
+              content="偏离值 = 股票涨幅(%) - 指数涨幅(%) | 正值表示股票强于指数，负值表示股票弱于指数"
+              closable={false}
+              style={{ marginBottom: '2rem' }}
+            />
 
-        <StockTable
-          stocks={stockStore.sortedStocks10}
-          loading={stockStore.loading}
-          otherStocks={stockStore.sortedStocks30}
-        />
-      </div>
+            {/* 10日榜 */}
+            <Card
+              title={
+                <Space>
+                  <span>📊 10日偏离值榜 Top 50</span>
+                  <Tag color="blue">{stocks10.length}</Tag>
+                </Space>
+              }
+              style={{ marginBottom: '2rem' }}
+            >
+              <StockTable
+                stocks={sortedStocks10}
+                loading={loading}
+                otherStocks={sortedStocks30}
+              />
+            </Card>
 
-      {/* 分割线 */}
-      <hr className="divider" />
+            <Divider />
 
-      {/* 30日榜 */}
-      <div className="section">
-        <div className="section-header">
-          <h2 className="section-title">📈 30日偏离值榜 Top 30</h2>
-          <span className="count-badge">{stockStore.count30}</span>
-        </div>
-
-        <StockTable
-          stocks={stockStore.sortedStocks30}
-          loading={stockStore.loading}
-          otherStocks={stockStore.sortedStocks10}
-        />
-      </div>
+            {/* 30日榜 */}
+            <Card
+              title={
+                <Space>
+                  <span>📈 30日偏离值榜 Top 50</span>
+                  <Tag color="blue">{stocks30.length}</Tag>
+                </Space>
+              }
+            >
+              <StockTable
+                stocks={sortedStocks30}
+                loading={loading}
+                otherStocks={sortedStocks10}
+              />
+            </Card>
+          </>
+        )}
+      </Content>
 
       {/* 页脚 */}
-      <div className="page-footer">
-        <p className="text-gray-600">股票异动监控系统 | © 2024</p>
-      </div>
+      <Footer className="home-footer">
+        <p>股票异动监控系统 | © 2024</p>
+      </Footer>
 
       {/* 主题切换悬浮按钮 */}
       <ThemeToggle />
 
-      {/* 更新日志抽屉 */}
+      {/* 水印 */}
+      <Watermark text="小X爱股" />
+
+      {/* 更新日志模态框 */}
       <Changelog
         visible={showChangelog}
         onVisibleChange={setShowChangelog}
-        changelog={stockStore.changelog}
+        changelog={changelog}
       />
-    </div>
+    </Layout>
   )
 }
 
