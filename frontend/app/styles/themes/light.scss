@@ -2,11 +2,11 @@
 // 亮色主题 - 清爽明亮 (Light & Clean)
 // ============================================
 
-// 背景色
+// 背景色 - 扁平化实色背景
 $bg-primary: #FFFFFF;
 $bg-secondary: #F8F9FA;
-$bg-tertiary: rgba(248, 249, 250, 0.8);
-$bg-overlay: rgba(248, 249, 250, 0.6);
+$bg-tertiary: #F1F5F9;      // 实色替代 rgba(248, 249, 250, 0.8)
+$bg-overlay: #E2E8F0;       // 实色替代 rgba(248, 249, 250, 0.6)
 
 // 品牌色与强调色
 $color-primary: #2962FF;

@@ -279,28 +279,27 @@ const getChangeClass = (change: number | undefined) => {
 <style scoped>
 .stock-table-container {
   width: 100%;
-  background: rgba(248, 249, 250, 0.8);
-  backdrop-filter: blur(12px);
+  background: #FFFFFF;
   border-radius: 16px;
   padding: 1.5rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 0 20px rgba(41, 98, 255, 0.08);
-  border: 1px solid rgba(41, 98, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #E5E7EB;
   transition: all 0.3s ease;
   overflow-x: auto;
 }
 
 /* 亮色模式 */
 :global(html:not(.dark)) .stock-table-container {
-  background: rgba(248, 249, 250, 0.9);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 0 20px rgba(41, 98, 255, 0.08);
-  border: 1px solid rgba(41, 98, 255, 0.15);
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #E5E7EB;
 }
 
 /* 深色模式 */
 :global(html.dark) .stock-table-container {
-  background: rgba(21, 26, 33, 0.7);
-  border: 1px solid rgba(41, 98, 255, 0.15);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 20px rgba(41, 98, 255, 0.1);
+  background: #1E293B;
+  border: 1px solid rgba(41, 98, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 :global(.stock-table-container .w-full) {
@@ -459,12 +458,10 @@ const getChangeClass = (change: number | undefined) => {
   font-weight: 600;
   color: #2962FF;
   font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-  text-shadow: 0 0 8px rgba(41, 98, 255, 0.3);
 }
 
 :global(.dark) .stock-cell.code {
   color: #2962FF;
-  text-shadow: 0 0 8px rgba(41, 98, 255, 0.3);
 }
 
 .stock-cell.name {
@@ -504,7 +501,7 @@ const getChangeClass = (change: number | undefined) => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   user-select: none;
-  background: rgba(41, 98, 255, 0.15);
+  background: rgba(41, 98, 255, 0.1);
   border: 1px solid rgba(41, 98, 255, 0.2);
 }
 
@@ -515,14 +512,14 @@ const getChangeClass = (change: number | undefined) => {
 }
 
 .expand-toggle:hover {
-  background: rgba(41, 98, 255, 0.25);
+  background: rgba(41, 98, 255, 0.2);
   transform: scale(1.05);
-  box-shadow: 0 0 8px rgba(41, 98, 255, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 :global(.dark) .expand-toggle:hover {
   background: rgba(41, 98, 255, 0.25);
-  box-shadow: 0 0 8px rgba(41, 98, 255, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .expand-toggle.expanded {
@@ -537,41 +534,35 @@ const getChangeClass = (change: number | undefined) => {
   border: 1px solid rgba(61, 90, 254, 0.3);
 }
 
-/* 表格数据高亮样式 */
+/* 表格数据高亮样式 - 扁平化（去除发光） */
 .change-highlight {
   color: #DC2626;
   font-weight: 600;
-  text-shadow: 0 0 8px rgba(220, 38, 38, 0.15);
 }
 
 /* 亮色模式 */
 :global(html:not(.dark)) .change-highlight {
   color: #DC2626;
-  text-shadow: 0 0 8px rgba(220, 38, 38, 0.15);
 }
 
 /* 深色模式 */
 :global(html.dark) .change-highlight {
   color: #f87171;
-  text-shadow: 0 0 8px rgba(248, 113, 113, 0.2);
 }
 
 .deviation-highlight {
   color: #DC2626;
   font-weight: 700;
-  text-shadow: 0 0 8px rgba(220, 38, 38, 0.15);
 }
 
 /* 亮色模式 */
 :global(html:not(.dark)) .deviation-highlight {
   color: #DC2626;
-  text-shadow: 0 0 8px rgba(220, 38, 38, 0.15);
 }
 
 /* 深色模式 */
 :global(html.dark) .deviation-highlight {
   color: #f87171;
-  text-shadow: 0 0 8px rgba(248, 113, 113, 0.2);
 }
 
 /* T+1/T+2 偏离值样式 */
@@ -639,23 +630,23 @@ const getChangeClass = (change: number | undefined) => {
 .t-plus-two-badge.abnormal {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   color: white;
-  box-shadow: 0 0 8px rgba(220, 38, 38, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 :global(.dark) .t-plus-two-badge.abnormal {
   background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
-  box-shadow: 0 0 8px rgba(248, 113, 113, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .t-plus-two-badge.normal {
   background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
   color: white;
-  box-shadow: 0 0 8px rgba(22, 163, 74, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 :global(.dark) .t-plus-two-badge.normal {
   background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
-  box-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .t-plus-two-badge:hover {
@@ -663,7 +654,7 @@ const getChangeClass = (change: number | undefined) => {
 }
 
 .stock-detail-row {
-  background: linear-gradient(135deg, rgba(243, 244, 246, 0.6) 0%, rgba(248, 249, 250, 0.6) 100%);
+  background: #F9FAFB;
   border-top: 1px solid rgba(41, 98, 255, 0.1);
   padding: 2rem;
   border-radius: 0 0 12px 12px;
@@ -672,13 +663,13 @@ const getChangeClass = (change: number | undefined) => {
 
 /* 亮色模式 */
 :global(html:not(.dark)) .stock-detail-row {
-  background: linear-gradient(135deg, rgba(243, 244, 246, 0.8) 0%, rgba(248, 249, 250, 0.8) 100%);
+  background: #F9FAFB;
   border-top: 1px solid rgba(41, 98, 255, 0.1);
 }
 
 /* 深色模式 */
 :global(html.dark) .stock-detail-row {
-  background: linear-gradient(135deg, rgba(11, 14, 17, 0.5) 0%, rgba(21, 26, 33, 0.5) 100%);
+  background: #0F172A;
   border-top: 1px solid rgba(41, 98, 255, 0.1);
 }
 
@@ -709,12 +700,10 @@ const getChangeClass = (change: number | undefined) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  text-shadow: 0 0 8px rgba(41, 98, 255, 0.2);
 }
 
 :global(.dark) .detail-title {
   color: #2962FF;
-  text-shadow: 0 0 8px rgba(41, 98, 255, 0.2);
 }
 
 .detail-title::before {
@@ -723,12 +712,10 @@ const getChangeClass = (change: number | undefined) => {
   height: 1.5rem;
   background: linear-gradient(135deg, #2962FF 0%, #3D5AFE 100%);
   border-radius: 2px;
-  box-shadow: 0 0 8px rgba(41, 98, 255, 0.3);
 }
 
 :global(.dark) .detail-title::before {
   background: linear-gradient(135deg, #2962FF 0%, #3D5AFE 100%);
-  box-shadow: 0 0 8px rgba(41, 98, 255, 0.3);
 }
 
 .t-plus-grid {

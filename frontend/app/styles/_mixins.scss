@@ -2,12 +2,18 @@
 // SCSS Mixins - 常用样式混合
 // ============================================
 
-// 玻璃拟态效果
-@mixin glass-effect($bg-opacity: 0.7, $blur: 12px) {
-  background: rgba(21, 26, 33, $bg-opacity);
-  backdrop-filter: blur($blur);
-  border: 1px solid rgba(41, 98, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(41, 98, 255, 0.1);
+// 扁平化卡片效果（替代原玻璃拟态效果）
+@mixin flat-card($bg-color: #FFFFFF, $border-color: rgba(41, 98, 255, 0.2)) {
+  background: $bg-color;
+  border: 1px solid $border-color;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+// 深色模式扁平化卡片
+@mixin flat-card-dark($bg-color: #1E293B, $border-color: rgba(41, 98, 255, 0.2)) {
+  background: $bg-color;
+  border: 1px solid $border-color;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 // 霓虹发光效果
@@ -15,19 +21,28 @@
   text-shadow: 0 0 10px rgba($color, $intensity);
 }
 
-// 蓝色发光边框
-@mixin glow-border($color: rgba(41, 98, 255, 0.15)) {
+// 扁平化边框（去除发光）
+@mixin flat-border($color: rgba(41, 98, 255, 0.2)) {
   border: 1px solid $color;
-  box-shadow: 0 0 8px rgba(41, 98, 255, 0.2);
 }
 
-// 悬停效果
+// 扁平化悬停效果（去除发光）
 @mixin hover-lift {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(41, 98, 255, 0.25), 0 0 30px rgba(41, 98, 255, 0.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+
+// 深色模式悬停效果
+@mixin hover-lift-dark {
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 }
 

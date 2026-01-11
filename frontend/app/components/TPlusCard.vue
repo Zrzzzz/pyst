@@ -165,12 +165,11 @@ const handleEdit = () => {
 
 <style scoped>
 .t-plus-card {
-  background: linear-gradient(135deg, rgba(248, 249, 250, 0.8) 0%, rgba(243, 244, 246, 0.8) 100%);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(41, 98, 255, 0.15);
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
   border-radius: 12px;
   padding: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 0.875rem;
   position: relative;
@@ -179,16 +178,16 @@ const handleEdit = () => {
 
 /* 亮色模式 */
 :global(html:not(.dark)) .t-plus-card {
-  background: linear-gradient(135deg, rgba(248, 249, 250, 0.9) 0%, rgba(243, 244, 246, 0.9) 100%);
-  border: 1px solid rgba(41, 98, 255, 0.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* 深色模式 */
 :global(html.dark) .t-plus-card {
-  background: linear-gradient(135deg, rgba(21, 26, 33, 0.7) 0%, rgba(15, 23, 42, 0.7) 100%);
-  border: 1px solid rgba(41, 98, 255, 0.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: #1E293B;
+  border: 1px solid rgba(41, 98, 255, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .t-plus-card::before {
@@ -208,14 +207,14 @@ const handleEdit = () => {
 }
 
 .t-plus-card:hover {
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
-  transform: translateY(-4px) scale(1.02);
-  border-color: rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  border-color: rgba(41, 98, 255, 0.3);
 }
 
 :global(.dark) .t-plus-card:hover {
-  box-shadow: 0 8px 24px rgba(129, 140, 248, 0.2);
-  border-color: rgba(129, 140, 248, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border-color: rgba(41, 98, 255, 0.4);
 }
 
 .t-plus-card:hover::before {
@@ -318,22 +317,22 @@ const handleEdit = () => {
 
 .t-plus-value.positive {
   color: #dc2626;
-  text-shadow: 0 0 10px rgba(220, 38, 38, 0.2);
+  font-weight: 600;
 }
 
 :global(.dark) .t-plus-value.positive {
   color: #f87171;
-  text-shadow: 0 0 10px rgba(248, 113, 113, 0.3);
+  font-weight: 600;
 }
 
 .t-plus-value.negative {
   color: #16a34a;
-  text-shadow: 0 0 10px rgba(22, 163, 74, 0.2);
+  font-weight: 600;
 }
 
 :global(.dark) .t-plus-value.negative {
   color: #4ade80;
-  text-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+  font-weight: 600;
 }
 
 .abnormal-badge {
@@ -374,7 +373,7 @@ const handleEdit = () => {
 }
 
 .edit-btn {
-  background: rgba(41, 98, 255, 0.2);
+  background: rgba(41, 98, 255, 0.1);
   border: 1px solid rgba(41, 98, 255, 0.3);
   color: #2962FF;
   cursor: pointer;
@@ -384,25 +383,25 @@ const handleEdit = () => {
   border-radius: 6px;
   white-space: nowrap;
   font-weight: 600;
-  box-shadow: 0 2px 4px rgba(41, 98, 255, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 :global(.dark) .edit-btn {
-  background: rgba(41, 98, 255, 0.2);
+  background: rgba(41, 98, 255, 0.15);
   border: 1px solid rgba(41, 98, 255, 0.3);
   color: #2962FF;
 }
 
 .edit-btn:hover {
-  background: rgba(41, 98, 255, 0.3);
+  background: rgba(41, 98, 255, 0.2);
   border-color: rgba(41, 98, 255, 0.5);
-  box-shadow: 0 4px 8px rgba(41, 98, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 :global(.dark) .edit-btn:hover {
-  background: rgba(41, 98, 255, 0.3);
+  background: rgba(41, 98, 255, 0.25);
   border-color: rgba(41, 98, 255, 0.5);
-  box-shadow: 0 4px 8px rgba(41, 98, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .edit-btn:active {

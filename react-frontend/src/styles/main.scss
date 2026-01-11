@@ -5,20 +5,17 @@
 // 1. 导入布局变量
 @use './_variables.scss' as *;
 
-// 2. 导入主题颜色变量
-@use './themes/index.scss' as *;
-
-// 3. 导入 Mixins
+// 2. 导入 Mixins
 @use './_mixins.scss' as *;
 
-// 4. 全局重置
+// 3. 全局重置
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-// 5. 根元素 - 亮色主题（默认）
+// 4. 根元素 - 亮色主题（默认）
 html {
   scroll-behavior: smooth;
   background: linear-gradient(135deg, #FFFFFF 0%, #F8F9FA 100%);
@@ -26,11 +23,11 @@ html {
   color-scheme: light;
   transition: background 0.3s ease, color 0.3s ease;
 
-  // 亮色主题 CSS变量 - 扁平化实色背景
+  // 亮色主题 CSS变量
   --bg-primary: #FFFFFF;
   --bg-secondary: #F8F9FA;
-  --bg-tertiary: #F1F5F9;
-  --bg-overlay: #E2E8F0;
+  --bg-tertiary: rgba(248, 249, 250, 0.8);
+  --bg-overlay: rgba(248, 249, 250, 0.6);
   --color-primary: #2962FF;
   --color-primary-light: #3D5AFE;
   --color-primary-glow: #1E88E5;
@@ -50,11 +47,11 @@ html.dark {
   background: linear-gradient(135deg, #0B0E11 0%, #151A21 100%);
   color-scheme: dark;
 
-  // 深色主题 CSS 变量 - 扁平化实色背景
+  // 深色主题 CSS 变量
   --bg-primary: #0B0E11;
   --bg-secondary: #151A21;
-  --bg-tertiary: #1E293B;
-  --bg-overlay: #0F172A;
+  --bg-tertiary: rgba(21, 26, 33, 0.7);
+  --bg-overlay: rgba(21, 26, 33, 0.5);
   --color-primary: #2962FF;
   --color-primary-light: #3D5AFE;
   --color-primary-glow: #1E88E5;
@@ -69,7 +66,7 @@ html.dark {
   --glow-color: rgba(41, 98, 255, 0.2);
 }
 
-// 6. 主体
+// 5. 主体
 body {
   height: 100%;
   font-family: $font-family-sans;
@@ -80,13 +77,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-// 7. 应用容器
-.app-container {
+// 6. 应用容器
+#root {
   min-height: 100vh;
   transition: all $transition-base $easing-ease-in-out;
 }
 
-// 8. 滚动条样式
+// 7. 滚动条样式
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -101,10 +98,12 @@ body {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
   border-radius: 6px;
   border: 2px solid var(--bg-secondary);
+  box-shadow: 0 0 8px var(--glow-color);
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, var(--color-primary-glow) 0%, var(--color-primary) 100%);
+  box-shadow: 0 0 12px var(--glow-color);
 }
 
 // 8. 选中文本样式
@@ -113,21 +112,23 @@ body {
   color: var(--text-primary);
 }
 
-// 9. 焦点样式 - 扁平化（去除发光）
+// 9. 焦点样式
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: 4px;
+  box-shadow: 0 0 8px var(--glow-color);
 }
 
-// 10. 链接样式 - 扁平化（去除发光）
+// 10. 链接样式
 a {
   color: var(--color-primary);
   text-decoration: none;
-  transition: color $transition-fast $easing-ease-in-out;
+  transition: color $transition-fast $easing-ease-in-out, text-shadow $transition-fast $easing-ease-in-out;
 
   &:hover {
     color: var(--color-primary-light);
+    text-shadow: 0 0 8px rgba(41, 98, 255, 0.4);
   }
 }
 
@@ -172,46 +173,26 @@ table {
 
 // 16. 工具类
 .text-gradient {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  @include text-gradient();
 }
 
-// 17. 扁平化涨跌颜色（去除霓虹光晕）
-.flat-color-up {
-  color: var(--color-up);
-  font-weight: 600;
-}
-
-.flat-color-down {
-  color: var(--color-down);
-  font-weight: 600;
-}
-
-// 保留原类名以兼容现有代码
+// 17. 霓虹光晕效果
 .neon-glow-up {
   color: var(--color-up);
-  font-weight: 600;
+  text-shadow: 0 0 10px rgba(5, 150, 105, 0.5);
 }
 
 .neon-glow-down {
   color: var(--color-down);
-  font-weight: 600;
+  text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
 }
 
-// 18. 扁平化面板（替代玻璃拟态）
-.flat-panel {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 2px 8px var(--shadow-color);
-}
-
-// 保留 .glass-panel 类名以兼容现有代码，但使用扁平化样式
+// 18. 玻璃拟态
 .glass-panel {
   background: var(--bg-tertiary);
+  backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
-  box-shadow: 0 2px 8px var(--shadow-color);
+  box-shadow: 0 8px 32px var(--shadow-color), 0 0 20px var(--glow-color);
 }
 
 // 19. 动画
@@ -264,6 +245,17 @@ table {
   }
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 // 20. 响应式设计
 @media (max-width: $breakpoint-md) {
   body {
@@ -276,6 +268,3 @@ table {
   }
 }
 
-.page-title, .page-subtitle {
-  transform: translateZ(0);
-}

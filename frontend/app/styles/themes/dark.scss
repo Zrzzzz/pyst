@@ -2,11 +2,11 @@
 // 深色主题 - 深空量子蓝 (Deep Quantum Blue)
 // ============================================
 
-// 背景色
+// 背景色 - 扁平化实色背景
 $bg-primary: #0B0E11;
 $bg-secondary: #151A21;
-$bg-tertiary: rgba(21, 26, 33, 0.7);
-$bg-overlay: rgba(21, 26, 33, 0.5);
+$bg-tertiary: #1E293B;      // 实色替代 rgba(21, 26, 33, 0.7)
+$bg-overlay: #0F172A;       // 实色替代 rgba(21, 26, 33, 0.5)
 
 // 品牌色与强调色
 $color-primary: #2962FF;

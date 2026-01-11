@@ -3,11 +3,11 @@
 // 定义所有主题需要的变量名和默认值
 // ============================================
 
-// 背景色
+// 背景色 - 扁平化实色背景
 $bg-primary: #0B0E11 !default;
 $bg-secondary: #151A21 !default;
-$bg-tertiary: rgba(21, 26, 33, 0.7) !default;
-$bg-overlay: rgba(21, 26, 33, 0.5) !default;
+$bg-tertiary: #1E293B !default;      // 实色替代 rgba(21, 26, 33, 0.7)
+$bg-overlay: #0F172A !default;       // 实色替代 rgba(21, 26, 33, 0.5)
 
 // 品牌色
 $color-primary: #2962FF !default;

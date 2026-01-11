@@ -14,6 +14,7 @@
         <!-- 技能列表 -->
         <div class="skills-section">
           <h2 class="skills-title">Skills</h2>
+          
           <div class="skills-grid">
             <div class="skill-tag">Vue.js</div>
             <div class="skill-tag">TypeScript</div>
@@ -53,29 +54,29 @@ import ThemeToggle from '@/components/ThemeToggle.vue'
 }
 
 .card {
-  background: rgba(21, 26, 33, 0.95);
-  backdrop-filter: blur(20px);
+  background: #1E293B;
   padding: 3rem 2.5rem;
   border-radius: 20px;
   text-align: center;
-  border: 1px solid rgba(41, 98, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(41, 98, 255, 0.1);
+  border: 1px solid rgba(41, 98, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
 }
 
 .card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 /* 亮色模式 */
 :global(html:not(.dark)) .card {
-  background: rgba(248, 249, 250, 0.95);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 0 20px rgba(41, 98, 255, 0.08);
+  background: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid #E5E7EB;
 }
 
 :global(html:not(.dark)) .card:hover {
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 /* 头像 */
@@ -90,13 +91,13 @@ import ThemeToggle from '@/components/ThemeToggle.vue'
   height: 120px;
   border-radius: 50%;
   border: 4px solid #2962FF;
-  box-shadow: 0 4px 16px rgba(41, 98, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: all 0.3s ease;
 }
 
 .avatar:hover {
   transform: scale(1.05);
-  box-shadow: 0 8px 24px rgba(41, 98, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* 名字 */
@@ -141,8 +142,8 @@ import ThemeToggle from '@/components/ThemeToggle.vue'
 
 .skill-tag {
   padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, rgba(41, 98, 255, 0.1), rgba(61, 90, 254, 0.05));
-  border: 1px solid rgba(41, 98, 255, 0.1);
+  background: rgba(41, 98, 255, 0.1);
+  border: 1px solid rgba(41, 98, 255, 0.2);
   border-radius: 12px;
   color: #E1E4E8;
   font-size: 0.875rem;
@@ -152,20 +153,21 @@ import ThemeToggle from '@/components/ThemeToggle.vue'
 }
 
 :global(html:not(.dark)) .skill-tag {
-  background: linear-gradient(135deg, rgba(41, 98, 255, 0.08), rgba(61, 90, 254, 0.04));
-  border: 1px solid rgba(41, 98, 255, 0.2);
+  background: #EFF6FF;
+  border: 1px solid rgba(41, 98, 255, 0.3);
   color: #374151;
 }
 
 .skill-tag:hover {
-  background: linear-gradient(135deg, rgba(41, 98, 255, 0.15), rgba(61, 90, 254, 0.1));
+  background: rgba(41, 98, 255, 0.2);
   border-color: #2962FF;
   color: #2962FF;
   transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 :global(html:not(.dark)) .skill-tag:hover {
-  background: linear-gradient(135deg, rgba(41, 98, 255, 0.15), rgba(61, 90, 254, 0.1));
+  background: #DBEAFE;
   border-color: #2962FF;
   color: #2962FF;
 }
