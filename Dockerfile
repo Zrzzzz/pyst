@@ -10,15 +10,18 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 RUN pnpm config set registry https://registry.npmmirror.com && \
     npm config set registry https://registry.npmmirror.com
 
-# ---------- 复制前端代码 ----------
+# ---------- 先复制依赖清单 ----------
+COPY react-frontend/package.json .
+COPY react-frontend/pnpm-lock.yaml .
+
+# ---------- 安装依赖 ----------
+RUN pnpm install --frozen-lockfile --prefer-offline
+
+# ---------- 再复制源码 ----------
 COPY react-frontend .
 
-# ---------- 安装依赖并构建 ----------
-# --frozen-lockfile：保证可复现
-# --prefer-offline：优先使用已下载包（即使无 cache 也有少量收益）
-RUN pnpm install --frozen-lockfile --prefer-offline && \
-    pnpm build
-
+# ---------- 构建 ----------
+RUN pnpm build
 
 # ============ 后端运行阶段 ============
 FROM astral/uv:python3.12-bookworm-slim
