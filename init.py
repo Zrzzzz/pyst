@@ -3,11 +3,9 @@
 项目初始化脚本
 用于初始化数据库和获取基础数据
 """
-import os
 import sys
 from dotenv import load_dotenv
-import logger_config  # 必须在导入 logger 之前
-from loguru import logger
+import logger_config  # noqa: F401  初始化日志配置
 from database import init_db
 from data_manager import DataManager
 
@@ -20,17 +18,9 @@ def main():
     print("=" * 50)
     print("股票异动监控系统 - 项目初始化")
     print("=" * 50)
-    
-    # 检查 Tushare Token
-    token = os.getenv("TUSHARE_TOKEN", "").strip()
-    if not token:
-        print("\n❌ 错误：未设置 TUSHARE_TOKEN")
-        print("请在 .env 文件中配置你的 Tushare Token")
-        print("获取 Token: https://tushare.pro")
-        return False
-    
-    print("\n✅ Tushare Token 已配置")
-    
+
+    print("\n📡 数据源: AKShare（无需 Token）")
+
     # 初始化数据库
     print("\n📦 初始化数据库...")
     try:

@@ -1,76 +1,114 @@
 """
 数据管理模块
-负责从 Tushare 获取股票数据并存储到 SQLite 数据库
+负责从 AKShare 获取股票数据并存储到 SQLite 数据库
 """
-import os
-import tushare as ts
+import akshare as ak
+import pandas as pd
 from datetime import datetime, timedelta
 from tqdm import tqdm
 import logger_config  # 必须在导入 logger 之前
 from loguru import logger
 from database import get_session, close_session, StockBasic, StockDailyData, IndexDailyData, TradeCal
 
-# 初始化 Tushare
-TUSHARE_TOKEN = os.getenv("TUSHARE_TOKEN", "")
-if not TUSHARE_TOKEN:
-    logger.warning("未设置 TUSHARE_TOKEN 环境变量，请在 .env 文件中配置")
 
-ts.set_token(TUSHARE_TOKEN)
-pro = ts.pro_api()
+# ---------- 工具函数 ----------
 
+def _symbol_to_ts_code(symbol: str) -> str:
+    """根据 6 位代码推断交易所后缀，返回 ts_code 形式 (例如 000001.SZ)"""
+    code = str(symbol).zfill(6)
+    if code.startswith(('60', '68', '900')):
+        return f"{code}.SH"
+    if code.startswith(('00', '30', '20')):
+        return f"{code}.SZ"
+    if code.startswith(('43', '83', '87', '88', '92')):
+        return f"{code}.BJ"
+    # 其他情况下，以 8 开头一般归到北交所
+    if code.startswith('8'):
+        return f"{code}.BJ"
+    return f"{code}.SZ"
+
+
+def _ts_code_to_symbol(ts_code: str) -> str:
+    """ts_code (000001.SZ) -> 6 位代码 (000001)"""
+    return str(ts_code).split('.')[0]
+
+
+def _normalize_date(value) -> str:
+    """统一日期为 YYYYMMDD 字符串"""
+    if value is None:
+        return ''
+    if isinstance(value, (datetime, pd.Timestamp)):
+        return value.strftime('%Y%m%d')
+    s = str(value)
+    if not s:
+        return ''
+    # 处理 2024-01-01 这种
+    if '-' in s:
+        try:
+            return datetime.strptime(s[:10], '%Y-%m-%d').strftime('%Y%m%d')
+        except ValueError:
+            pass
+    return s.replace('-', '').replace('/', '')[:8]
+
+
+# ---------- DataManager ----------
 
 class DataManager:
     """数据管理类"""
-    
+
     def __init__(self):
         self.session = get_session()
-    
+
     def __del__(self):
         close_session(self.session)
-    
+
+    # ---------- 股票基本信息 ----------
+
     def fetch_stock_basic(self, exchange='', list_status='L', market=''):
         """
-        获取股票基本信息
+        获取股票基本信息（沪深京 A 股，已上市）
 
-        参数:
-            exchange: 交易所 SSE上交所 SZSE深交所 BSE北交所，默认为空（全部）
-            list_status: 上市状态 L上市 D退市 P暂停上市，默认为L（上市）
-            market: 市场类别 主板/创业板/科创板/CDR/北交所，默认为空（全部）
+        参数 exchange/list_status/market 保留以兼容旧调用，但 akshare 接口仅返回当前在市的 A 股。
         """
         try:
-            logger.info(f"开始获取股票基本信息... (exchange={exchange}, list_status={list_status}, market={market})")
-
-            # 调用 Tushare API 获取股票基本信息（获取所有字段）
-            df = pro.stock_basic(
-                exchange=exchange,
-                list_status=list_status,
-                market=market
+            logger.info(
+                f"开始获取股票基本信息... (exchange={exchange}, list_status={list_status}, market={market})"
             )
 
+            df = self._fetch_stock_basic_dataframe()
             if df.empty:
                 logger.warning("未获取到任何股票数据")
                 return df
 
-            # 批量插入或更新数据
+            # 按 exchange 参数过滤
+            if exchange:
+                target_exchange = {'SSE': 'SSE', 'SZSE': 'SZSE', 'BSE': 'BSE'}.get(exchange.upper())
+                if target_exchange:
+                    df = df[df['exchange'] == target_exchange].reset_index(drop=True)
+
+            # 按 market 参数过滤
+            if market:
+                df = df[df['market'] == market].reset_index(drop=True)
+
             for _, row in df.iterrows():
                 stock = StockBasic(
                     ts_code=row['ts_code'],
                     symbol=row['symbol'],
                     name=row['name'],
-                    area=row.get('area', ''),
-                    industry=row.get('industry', ''),
-                    fullname=row.get('fullname', None),
-                    enname=row.get('enname', None),
-                    cnspell=row.get('cnspell', None),
-                    market=row.get('market', ''),
-                    exchange=row.get('exchange', None),
-                    curr_type=row.get('curr_type', None),
-                    list_status=row.get('list_status', None),
-                    list_date=row.get('list_date', ''),
-                    delist_date=row.get('delist_date', None),
-                    is_hs=row.get('is_hs', None),
-                    act_name=row.get('act_name', None),
-                    act_ent_type=row.get('act_ent_type', None)
+                    area=row.get('area', '') or '',
+                    industry=row.get('industry', '') or '',
+                    fullname=row.get('fullname') or None,
+                    enname=None,
+                    cnspell=None,
+                    market=row.get('market', '') or '',
+                    exchange=row.get('exchange') or None,
+                    curr_type='CNY',
+                    list_status='L',
+                    list_date=row.get('list_date', '') or '',
+                    delist_date=None,
+                    is_hs=None,
+                    act_name=None,
+                    act_ent_type=None,
                 )
                 self.session.merge(stock)
 
@@ -81,7 +119,99 @@ class DataManager:
             logger.error(f"获取股票基本信息失败: {e}")
             self.session.rollback()
             raise
-    
+
+    def _fetch_stock_basic_dataframe(self) -> pd.DataFrame:
+        """整合沪深京三大交易所的股票列表，返回统一字段的 DataFrame"""
+        frames = []
+
+        # 上交所 - 主板A股
+        try:
+            sh_main = ak.stock_info_sh_name_code(symbol="主板A股")
+            sh_main['market'] = '主板'
+            sh_main['exchange'] = 'SSE'
+            frames.append(sh_main)
+        except Exception as e:
+            logger.warning(f"获取上交所主板A股列表失败: {e}")
+
+        # 上交所 - 科创板
+        try:
+            sh_kcb = ak.stock_info_sh_name_code(symbol="科创板")
+            sh_kcb['market'] = '科创板'
+            sh_kcb['exchange'] = 'SSE'
+            frames.append(sh_kcb)
+        except Exception as e:
+            logger.warning(f"获取上交所科创板列表失败: {e}")
+
+        sh_normalized = []
+        for df in frames:
+            if df is None or df.empty:
+                continue
+            tmp = pd.DataFrame({
+                'symbol': df['证券代码'].astype(str).str.zfill(6),
+                'name': df['证券简称'],
+                'fullname': df.get('证券全称'),
+                'list_date': df['上市日期'].apply(_normalize_date),
+                'market': df['market'],
+                'exchange': df['exchange'],
+                'industry': '',
+                'area': '',
+            })
+            sh_normalized.append(tmp)
+
+        # 深交所
+        sz_normalized = []
+        try:
+            sz_df = ak.stock_info_sz_name_code(symbol="A股列表")
+            if sz_df is not None and not sz_df.empty:
+                board_map = {
+                    '主板': '主板',
+                    '中小企业板': '中小板',
+                    '创业板': '创业板',
+                }
+                tmp = pd.DataFrame({
+                    'symbol': sz_df['A股代码'].astype(str).str.zfill(6),
+                    'name': sz_df['A股简称'],
+                    'fullname': None,
+                    'list_date': sz_df['A股上市日期'].apply(_normalize_date),
+                    'market': sz_df['板块'].map(board_map).fillna(sz_df['板块']),
+                    'exchange': 'SZSE',
+                    'industry': sz_df.get('所属行业', '').fillna('') if '所属行业' in sz_df.columns else '',
+                    'area': '',
+                })
+                sz_normalized.append(tmp)
+        except Exception as e:
+            logger.warning(f"获取深交所A股列表失败: {e}")
+
+        # 北交所
+        bj_normalized = []
+        try:
+            bj_df = ak.stock_info_bj_name_code()
+            if bj_df is not None and not bj_df.empty:
+                tmp = pd.DataFrame({
+                    'symbol': bj_df['证券代码'].astype(str).str.zfill(6),
+                    'name': bj_df['证券简称'],
+                    'fullname': None,
+                    'list_date': bj_df['上市日期'].apply(_normalize_date),
+                    'market': '北交所',
+                    'exchange': 'BSE',
+                    'industry': bj_df.get('所属行业', '').fillna('') if '所属行业' in bj_df.columns else '',
+                    'area': bj_df.get('地区', '').fillna('') if '地区' in bj_df.columns else '',
+                })
+                bj_normalized.append(tmp)
+        except Exception as e:
+            logger.warning(f"获取北交所股票列表失败: {e}")
+
+        all_frames = sh_normalized + sz_normalized + bj_normalized
+        if not all_frames:
+            return pd.DataFrame()
+
+        merged = pd.concat(all_frames, ignore_index=True)
+        merged['ts_code'] = merged['symbol'].apply(_symbol_to_ts_code)
+        merged = merged.drop_duplicates(subset=['ts_code']).reset_index(drop=True)
+        return merged
+
+    # ---------- 交易日历 ----------
+
     def count_trading_days(self, start_date, end_date, exchange='SSE'):
         """计算日期范围内的交易日数量"""
         try:
@@ -96,15 +226,63 @@ class DataManager:
             logger.error(f"计算交易日数量失败: {e}")
             raise
 
-    def fetch_stock_daily(self, ts_code, start_date=None, end_date=None):
-        """
-        获取单只股票的日线数据
+    def fetch_trade_cal(self, exchange='SSE', start_date=None, end_date=None):
+        """获取交易日历数据（基于 akshare 的 A 股交易日历）"""
+        try:
+            if not start_date:
+                start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
+            if not end_date:
+                end_date = (datetime.now() + timedelta(days=365)).strftime('%Y%m%d')
 
-        参数:
-            ts_code: 股票代码
-            start_date: 开始日期 (YYYYMMDD)
-            end_date: 结束日期 (YYYYMMDD)
-        """
+            logger.info(f"获取 {exchange} 交易日历: {start_date} - {end_date}")
+
+            # akshare 返回的是所有 A 股交易日，沪深京通用
+            trade_dates = ak.tool_trade_date_hist_sina()
+            trading_set = {
+                _normalize_date(d) for d in trade_dates['trade_date'].tolist()
+            }
+
+            start_dt = datetime.strptime(start_date, '%Y%m%d')
+            end_dt = datetime.strptime(end_date, '%Y%m%d')
+
+            rows = []
+            cur = start_dt
+            pretrade_date = None
+            while cur <= end_dt:
+                date_str = cur.strftime('%Y%m%d')
+                is_open = '1' if date_str in trading_set else '0'
+                rows.append({
+                    'exchange': exchange,
+                    'cal_date': date_str,
+                    'is_open': is_open,
+                    'pretrade_date': pretrade_date,
+                })
+                if is_open == '1':
+                    pretrade_date = date_str
+                cur += timedelta(days=1)
+
+            df = pd.DataFrame(rows)
+            for row in rows:
+                trade_cal = TradeCal(
+                    exchange=row['exchange'],
+                    cal_date=row['cal_date'],
+                    is_open=row['is_open'],
+                    pretrade_date=row['pretrade_date'],
+                )
+                self.session.merge(trade_cal)
+
+            self.session.commit()
+            logger.info(f"成功获取 {exchange} 的 {len(df)} 条交易日历数据")
+            return df
+        except Exception as e:
+            logger.error(f"获取 {exchange} 交易日历失败: {e}")
+            self.session.rollback()
+            raise
+
+    # ---------- 股票日线 ----------
+
+    def fetch_stock_daily(self, ts_code, start_date=None, end_date=None):
+        """获取单只股票的日线数据"""
         try:
             if not start_date:
                 start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
@@ -112,11 +290,11 @@ class DataManager:
                 end_date = datetime.now().strftime('%Y%m%d')
 
             logger.info(f"获取 {ts_code} 日线数据: {start_date} - {end_date}")
-            df = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+            df = self._fetch_one_stock_daily(ts_code, start_date, end_date)
 
-            if df.empty:
+            if df is None or df.empty:
                 logger.warning(f"{ts_code} 未获取到日线数据")
-                return df
+                return df if df is not None else pd.DataFrame()
 
             for _, row in df.iterrows():
                 daily = StockDailyData(
@@ -126,11 +304,11 @@ class DataManager:
                     high=row['high'],
                     low=row['low'],
                     close=row['close'],
-                    pre_close=row.get('pre_close', None),
-                    change=row.get('change', None),
-                    pct_chg=row.get('pct_chg', None),
+                    pre_close=row.get('pre_close'),
+                    change=row.get('change'),
+                    pct_chg=row.get('pct_chg'),
                     vol=row['vol'],
-                    amount=row['amount']
+                    amount=row['amount'],
                 )
                 self.session.merge(daily)
 
@@ -142,17 +320,26 @@ class DataManager:
             self.session.rollback()
             raise
 
+    def _fetch_one_stock_daily(self, ts_code, start_date, end_date) -> pd.DataFrame:
+        """获取单只股票日线，返回标准化字段的 DataFrame（不写库）"""
+        symbol = _ts_code_to_symbol(ts_code)
+        raw = ak.stock_zh_a_hist(
+            symbol=symbol,
+            period='daily',
+            start_date=start_date,
+            end_date=end_date,
+            adjust='',
+        )
+        if raw is None or raw.empty:
+            return pd.DataFrame()
+        return _normalize_kline_df(raw, ts_code)
+
     def fetch_stock_daily_batch(self, ts_codes, start_date=None, end_date=None, exchange='SSE'):
         """
-        批量获取多只股票的日线数据
+        批量获取多只股票的日线数据（逐只调用 akshare）
 
-        根据交易日期个数和 API 限制（6000条数据），自动分批请求
-
-        参数:
-            ts_codes: 股票代码列表或逗号分隔的字符串
-            start_date: 开始日期 (YYYYMMDD)
-            end_date: 结束日期 (YYYYMMDD)
-            exchange: 交易所 (SSE/SZSE)，用于计算交易日数量
+        akshare 不支持批量请求，这里在内部循环逐只获取，
+        但保留了与原接口相同的入参/出参以兼容上层调用。
         """
         try:
             if not start_date:
@@ -160,13 +347,12 @@ class DataManager:
             if not end_date:
                 end_date = datetime.now().strftime('%Y%m%d')
 
-            # 转换为列表
             if isinstance(ts_codes, str):
                 ts_codes = [code.strip() for code in ts_codes.split(',')]
 
             logger.info(f"批量获取 {len(ts_codes)} 只股票的日线数据: {start_date} - {end_date}")
 
-            # 检查开始日期和结束日期是否都有股票数据
+            # 检查日期边界是否已有数据，决定是否缩窄区间
             start_date_has_data = self.session.query(StockDailyData).filter(
                 StockDailyData.trade_date == start_date
             ).first() is not None
@@ -179,9 +365,7 @@ class DataManager:
                 logger.info(f"开始日期 {start_date} 和结束日期 {end_date} 都有股票数据，跳过获取")
                 return None
 
-            # 根据缺失的数据情况分别处理
             if not end_date_has_data:
-                # 缺少 end_date 的数据，从最新交易日期的下一个交易日开始获取
                 latest_daily = self.session.query(StockDailyData).order_by(
                     StockDailyData.trade_date.desc()
                 ).first()
@@ -190,7 +374,6 @@ class DataManager:
                     latest_trade_date = latest_daily.trade_date
                     logger.info(f"缺少结束日期数据，数据库中最新交易日期: {latest_trade_date}")
 
-                    # 获取最新交易日期的下一个交易日
                     next_trade_date = self.session.query(TradeCal).filter(
                         TradeCal.exchange == exchange,
                         TradeCal.cal_date > latest_trade_date,
@@ -206,7 +389,6 @@ class DataManager:
                     logger.info("数据库中无股票数据，使用原始开始日期")
 
             elif not start_date_has_data:
-                # 缺少 start_date 的数据，从最前面的交易日的上一个交易日结束获取
                 earliest_daily = self.session.query(StockDailyData).order_by(
                     StockDailyData.trade_date.asc()
                 ).first()
@@ -215,7 +397,6 @@ class DataManager:
                     earliest_trade_date = earliest_daily.trade_date
                     logger.info(f"缺少开始日期数据，数据库中最早交易日期: {earliest_trade_date}")
 
-                    # 获取最早交易日期的上一个交易日
                     prev_trade_date = self.session.query(TradeCal).filter(
                         TradeCal.exchange == exchange,
                         TradeCal.cal_date < earliest_trade_date,
@@ -230,44 +411,19 @@ class DataManager:
                 else:
                     logger.info("数据库中无股票数据，使用原始结束日期")
 
-            # 计算交易日数量
             trading_days_count = self.count_trading_days(start_date, end_date, exchange)
             logger.info(f"日期范围内交易日数量: {trading_days_count}")
 
-            # API 限制：
-            # 1. 每次请求最多 6000 条数据
-            # 2. 每次请求最多 1000 只股票
-            max_data_per_request = 6000
-            max_stocks_by_data = max(1, max_data_per_request // trading_days_count)
-            max_stocks_per_request = min(1000, max_stocks_by_data)
-
-            logger.info(f"每次请求最多包含 {max_stocks_per_request} 只股票")
-
-            # 计算总批次
-            total_batches = (len(ts_codes) + max_stocks_per_request - 1) // max_stocks_per_request
-            logger.info(f"总共需要请求 {total_batches} 批")
-
-            # 分批请求
             all_data = []
             with tqdm(total=len(ts_codes), desc="获取股票日线数据", unit="只") as pbar:
-                for i in range(0, len(ts_codes), max_stocks_per_request):
-                    batch_codes = ts_codes[i:i + max_stocks_per_request]
-                    batch_str = ','.join(batch_codes)
-                    batch_num = i // max_stocks_per_request + 1
-
+                for ts_code in ts_codes:
                     try:
-                        df = pro.daily(
-                            ts_code=batch_str,
-                            start_date=start_date,
-                            end_date=end_date
-                        )
+                        df = self._fetch_one_stock_daily(ts_code, start_date, end_date)
 
-                        if df.empty:
-                            logger.warning(f"批次 {batch_num}/{total_batches} 未获取到数据")
-                            pbar.update(len(batch_codes))
+                        if df is None or df.empty:
+                            pbar.update(1)
                             continue
 
-                        # 保存数据
                         for _, row in df.iterrows():
                             daily = StockDailyData(
                                 ts_code=row['ts_code'],
@@ -276,21 +432,24 @@ class DataManager:
                                 high=row['high'],
                                 low=row['low'],
                                 close=row['close'],
-                                pre_close=row.get('pre_close', None),
-                                change=row.get('change', None),
-                                pct_chg=row.get('pct_chg', None),
+                                pre_close=row.get('pre_close'),
+                                change=row.get('change'),
+                                pct_chg=row.get('pct_chg'),
                                 vol=row['vol'],
-                                amount=row['amount']
+                                amount=row['amount'],
                             )
                             self.session.merge(daily)
 
                         all_data.append(df)
-                        # logger.info(f"批次 {batch_num}/{total_batches} 成功获取 {len(df)} 条数据")
-                        pbar.update(len(batch_codes))
+                        pbar.update(1)
 
-                    except Exception as batch_error:
-                        logger.error(f"批次 {batch_num}/{total_batches} 请求失败: {batch_error}")
-                        pbar.update(len(batch_codes))
+                        # 每 100 只提交一次，减少长事务
+                        if len(all_data) % 100 == 0:
+                            self.session.commit()
+
+                    except Exception as one_err:
+                        logger.error(f"获取 {ts_code} 日线数据失败: {one_err}")
+                        pbar.update(1)
                         continue
 
             self.session.commit()
@@ -298,17 +457,17 @@ class DataManager:
             if all_data:
                 total_rows = sum(len(df) for df in all_data)
                 logger.info(f"批量获取完成，共获取 {total_rows} 条日线数据")
-                import pandas as pd
                 return pd.concat(all_data, ignore_index=True)
-            else:
-                logger.warning("未获取到任何日线数据")
-                return None
 
+            logger.warning("未获取到任何日线数据")
+            return None
         except Exception as e:
             logger.error(f"批量获取日线数据失败: {e}")
             self.session.rollback()
             raise
-    
+
+    # ---------- 指数日线 ----------
+
     def fetch_index_daily(self, ts_code, start_date=None, end_date=None):
         """获取指数日线数据"""
         try:
@@ -318,11 +477,11 @@ class DataManager:
                 end_date = datetime.now().strftime('%Y%m%d')
 
             logger.info(f"获取 {ts_code} 指数数据: {start_date} - {end_date}")
-            df = pro.index_daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+            df = self._fetch_one_index_daily(ts_code, start_date, end_date)
 
-            if df.empty:
+            if df is None or df.empty:
                 logger.warning(f"{ts_code} 未获取到指数数据")
-                return df
+                return df if df is not None else pd.DataFrame()
 
             for _, row in df.iterrows():
                 daily = IndexDailyData(
@@ -332,11 +491,11 @@ class DataManager:
                     high=row['high'],
                     low=row['low'],
                     close=row['close'],
-                    pre_close=row.get('pre_close', None),
-                    change=row.get('change', None),
-                    pct_chg=row.get('pct_chg', None),
+                    pre_close=row.get('pre_close'),
+                    change=row.get('change'),
+                    pct_chg=row.get('pct_chg'),
                     vol=row['vol'],
-                    amount=row['amount']
+                    amount=row['amount'],
                 )
                 self.session.merge(daily)
 
@@ -348,31 +507,32 @@ class DataManager:
             self.session.rollback()
             raise
 
+    def _fetch_one_index_daily(self, ts_code, start_date, end_date) -> pd.DataFrame:
+        """获取单个指数的日线数据，返回标准化字段 DataFrame（不写库）"""
+        symbol = _ts_code_to_symbol(ts_code)
+        raw = ak.index_zh_a_hist(
+            symbol=symbol,
+            period='daily',
+            start_date=start_date,
+            end_date=end_date,
+        )
+        if raw is None or raw.empty:
+            return pd.DataFrame()
+        return _normalize_kline_df(raw, ts_code)
+
     def fetch_index_daily_batch(self, ts_codes, start_date=None, end_date=None, exchange='SSE'):
-        """
-        批量获取多个指数的日线数据（逐个处理）
-
-        由于指数接口不支持批量请求，需要逐个获取每个指数的数据
-
-        参数:
-            ts_codes: 指数代码列表或逗号分隔的字符串
-            start_date: 开始日期 (YYYYMMDD)
-            end_date: 结束日期 (YYYYMMDD)
-            exchange: 交易所 (SSE/SZSE)，用于查询下一个交易日
-        """
+        """批量获取多个指数的日线数据（逐个处理）"""
         try:
             if not start_date:
                 start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
             if not end_date:
                 end_date = datetime.now().strftime('%Y%m%d')
 
-            # 转换为列表
             if isinstance(ts_codes, str):
                 ts_codes = [code.strip() for code in ts_codes.split(',')]
 
             logger.info(f"批量获取 {len(ts_codes)} 个指数的日线数据: {start_date} - {end_date}")
 
-            # 检查开始日期和结束日期是否都有指数数据
             start_date_has_data = self.session.query(IndexDailyData).filter(
                 IndexDailyData.trade_date == start_date
             ).first() is not None
@@ -385,9 +545,7 @@ class DataManager:
                 logger.info(f"开始日期 {start_date} 和结束日期 {end_date} 都有指数数据，跳过获取")
                 return None
 
-            # 根据缺失的数据情况分别处理
             if not end_date_has_data:
-                # 缺少 end_date 的数据，从最新交易日期的下一个交易日开始获取
                 latest_daily = self.session.query(IndexDailyData).order_by(
                     IndexDailyData.trade_date.desc()
                 ).first()
@@ -396,7 +554,6 @@ class DataManager:
                     latest_trade_date = latest_daily.trade_date
                     logger.info(f"缺少结束日期数据，数据库中最新交易日期: {latest_trade_date}")
 
-                    # 获取最新交易日期的下一个交易日
                     next_trade_date = self.session.query(TradeCal).filter(
                         TradeCal.exchange == exchange,
                         TradeCal.cal_date > latest_trade_date,
@@ -412,7 +569,6 @@ class DataManager:
                     logger.info("数据库中无指数数据，使用原始开始日期")
 
             elif not start_date_has_data:
-                # 缺少 start_date 的数据，从最前面的交易日的上一个交易日结束获取
                 earliest_daily = self.session.query(IndexDailyData).order_by(
                     IndexDailyData.trade_date.asc()
                 ).first()
@@ -421,7 +577,6 @@ class DataManager:
                     earliest_trade_date = earliest_daily.trade_date
                     logger.info(f"缺少开始日期数据，数据库中最早交易日期: {earliest_trade_date}")
 
-                    # 获取最早交易日期的上一个交易日
                     prev_trade_date = self.session.query(TradeCal).filter(
                         TradeCal.exchange == exchange,
                         TradeCal.cal_date < earliest_trade_date,
@@ -436,37 +591,31 @@ class DataManager:
                 else:
                     logger.info("数据库中无指数数据，使用原始结束日期")
 
-            # 逐个获取每个指数的数据
             all_data = []
             with tqdm(total=len(ts_codes), desc="获取指数日线数据", unit="个") as pbar:
                 for ts_code in ts_codes:
                     try:
                         logger.info(f"获取指数 {ts_code} 的日线数据: {start_date} - {end_date}")
-                        df = pro.index_daily(
-                            ts_code=ts_code,
-                            start_date=start_date,
-                            end_date=end_date
-                        )
+                        df = self._fetch_one_index_daily(ts_code, start_date, end_date)
 
-                        if df.empty:
+                        if df is None or df.empty:
                             logger.warning(f"指数 {ts_code} 未获取到数据")
                             pbar.update(1)
                             continue
 
-                        # 保存数据
                         for _, row in df.iterrows():
                             daily = IndexDailyData(
-                                ts_code=row['ts_code'],
+                                ts_code=ts_code,
                                 trade_date=row['trade_date'],
                                 open=row['open'],
                                 high=row['high'],
                                 low=row['low'],
                                 close=row['close'],
-                                pre_close=row.get('pre_close', None),
-                                change=row.get('change', None),
-                                pct_chg=row.get('pct_chg', None),
+                                pre_close=row.get('pre_close'),
+                                change=row.get('change'),
+                                pct_chg=row.get('pct_chg'),
                                 vol=row['vol'],
-                                amount=row['amount']
+                                amount=row['amount'],
                             )
                             self.session.merge(daily)
 
@@ -484,26 +633,17 @@ class DataManager:
             if all_data:
                 total_rows = sum(len(df) for df in all_data)
                 logger.info(f"批量获取完成，共获取 {total_rows} 条指数日线数据")
-                import pandas as pd
                 return pd.concat(all_data, ignore_index=True)
-            else:
-                logger.warning("未获取到任何指数日线数据")
-                return None
 
+            logger.warning("未获取到任何指数日线数据")
+            return None
         except Exception as e:
             logger.error(f"批量获取指数日线数据失败: {e}")
             self.session.rollback()
             raise
 
     def refresh_index_daily(self, ts_codes, days=40, exchange='SSE'):
-        """
-        刷新指数日线数据（最近40天）
-
-        参数:
-            ts_codes: 指数代码列表或逗号分隔的字符串
-            days: 刷新天数，默认40天
-            exchange: 交易所 (SSE/SZSE)
-        """
+        """刷新指数日线数据（最近 N 天）"""
         try:
             end_date = datetime.now().strftime('%Y%m%d')
             start_date = (datetime.now() - timedelta(days=days)).strftime('%Y%m%d')
@@ -513,7 +653,9 @@ class DataManager:
         except Exception as e:
             logger.error(f"刷新指数日线数据失败: {e}")
             raise
-    
+
+    # ---------- 其他工具 ----------
+
     def get_stock_list(self):
         """获取所有股票列表"""
         try:
@@ -555,34 +697,6 @@ class DataManager:
             logger.error(f"检查交易日历更新状态失败: {e}")
             raise
 
-    def fetch_trade_cal(self, exchange='SSE', start_date=None, end_date=None):
-        """获取交易日历数据"""
-        try:
-            if not start_date:
-                start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
-            if not end_date:
-                end_date = (datetime.now() + timedelta(days=365)).strftime('%Y%m%d')
-
-            logger.info(f"获取 {exchange} 交易日历: {start_date} - {end_date}")
-            df = pro.trade_cal(exchange=exchange, start_date=start_date, end_date=end_date)
-
-            for _, row in df.iterrows():
-                trade_cal = TradeCal(
-                    exchange=row['exchange'],
-                    cal_date=row['cal_date'],
-                    is_open=row['is_open'],
-                    pretrade_date=row.get('pretrade_date', None)
-                )
-                self.session.merge(trade_cal)
-
-            self.session.commit()
-            logger.info(f"成功获取 {exchange} 的 {len(df)} 条交易日历数据")
-            return df
-        except Exception as e:
-            logger.error(f"获取 {exchange} 交易日历失败: {e}")
-            self.session.rollback()
-            raise
-
     def update_trade_cal_if_needed(self, exchange='SSE', days_threshold=180):
         """如果需要则更新交易日历"""
         try:
@@ -595,3 +709,29 @@ class DataManager:
             logger.error(f"更新交易日历失败: {e}")
             raise
 
+
+def _normalize_kline_df(raw: pd.DataFrame, ts_code: str) -> pd.DataFrame:
+    """
+    把 akshare 返回的 K 线 DataFrame（中文列）标准化为与原 tushare 字段一致的形式。
+
+    字段单位说明：
+    - akshare 成交量单位为手，与原 tushare daily.vol 一致
+    - akshare 成交额单位为元，原 tushare daily.amount 为千元，这里除以 1000 保持一致
+    """
+    df = raw.copy()
+    df['trade_date'] = df['日期'].apply(_normalize_date)
+    df['ts_code'] = ts_code
+    df['open'] = pd.to_numeric(df['开盘'], errors='coerce')
+    df['close'] = pd.to_numeric(df['收盘'], errors='coerce')
+    df['high'] = pd.to_numeric(df['最高'], errors='coerce')
+    df['low'] = pd.to_numeric(df['最低'], errors='coerce')
+    df['vol'] = pd.to_numeric(df['成交量'], errors='coerce')
+    df['amount'] = pd.to_numeric(df['成交额'], errors='coerce') / 1000.0
+    df['pct_chg'] = pd.to_numeric(df.get('涨跌幅'), errors='coerce')
+    df['change'] = pd.to_numeric(df.get('涨跌额'), errors='coerce')
+    df['pre_close'] = df['close'] - df['change']
+
+    return df[[
+        'ts_code', 'trade_date', 'open', 'high', 'low', 'close',
+        'pre_close', 'change', 'pct_chg', 'vol', 'amount',
+    ]]

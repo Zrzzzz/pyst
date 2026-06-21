@@ -61,13 +61,9 @@ pyst/
 uv sync
 ```
 
-### 配置 Tushare Token
-编辑 `.env` 文件，添加你的 Tushare Token：
-```
-TUSHARE_TOKEN=your_token_here
-```
-
-获取 Token：https://tushare.pro
+### 数据源
+项目已迁移到 [AKShare](https://github.com/akfamily/akshare)，无需任何 Token。
+如需自定义日志级别等，可参考 `.env.example` 自行创建 `.env`。
 
 ### 初始化项目
 运行初始化脚本，自动完成数据库初始化和基础数据获取：
