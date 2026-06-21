@@ -5,8 +5,9 @@ WORKDIR /app/react-frontend
 
 # ---------- 配置国内 npm 镜像并安装 pnpm ----------
 # 直接走 npmmirror 安装，避免 corepack 走默认 registry.npmjs.org 在国内被拦截
+# 固定 pnpm 9（lockfile v9.0），避免 pnpm 10 对 ignored build scripts 报错退出
 RUN npm config set registry https://registry.npmmirror.com && \
-    npm install -g pnpm && \
+    npm install -g pnpm@9 && \
     pnpm config set registry https://registry.npmmirror.com
 
 # ---------- 先复制依赖清单 ----------
