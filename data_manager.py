@@ -28,9 +28,12 @@ def _symbol_to_ts_code(symbol: str) -> str:
     return f"{code}.SZ"
 
 
-def _ts_code_to_symbol(ts_code: str) -> str:
-    """ts_code (000001.SZ) -> 6 位代码 (000001)"""
-    return str(ts_code).split('.')[0]
+def _ts_code_to_sina_symbol(ts_code: str) -> str:
+    """ts_code (000001.SZ) -> 新浪/腾讯格式 (sz000001)"""
+    parts = str(ts_code).split('.')
+    code = parts[0]
+    suffix = parts[1].lower() if len(parts) > 1 else 'sz'
+    return f"{suffix}{code}"
 
 
 def _normalize_date(value) -> str:
@@ -321,18 +324,22 @@ class DataManager:
             raise
 
     def _fetch_one_stock_daily(self, ts_code, start_date, end_date) -> pd.DataFrame:
-        """获取单只股票日线，返回标准化字段的 DataFrame（不写库）"""
-        symbol = _ts_code_to_symbol(ts_code)
-        raw = ak.stock_zh_a_hist(
+        """获取单只股票日线，返回标准化字段的 DataFrame（不写库）
+
+        改用新浪 ak.stock_zh_a_daily：东财 push2his.eastmoney.com 在部分网络环境
+        （服务器 Clash/mihomo 透明代理）会被 path 级阻断；新浪走 finance.sina.com.cn
+        在同环境可用。
+        """
+        symbol = _ts_code_to_sina_symbol(ts_code)
+        raw = ak.stock_zh_a_daily(
             symbol=symbol,
-            period='daily',
             start_date=start_date,
             end_date=end_date,
             adjust='',
         )
         if raw is None or raw.empty:
             return pd.DataFrame()
-        return _normalize_kline_df(raw, ts_code)
+        return _normalize_sina_daily_df(raw, ts_code)
 
     def fetch_stock_daily_batch(self, ts_codes, start_date=None, end_date=None, exchange='SSE'):
         """
@@ -508,17 +515,17 @@ class DataManager:
             raise
 
     def _fetch_one_index_daily(self, ts_code, start_date, end_date) -> pd.DataFrame:
-        """获取单个指数的日线数据，返回标准化字段 DataFrame（不写库）"""
-        symbol = _ts_code_to_symbol(ts_code)
-        raw = ak.index_zh_a_hist(
-            symbol=symbol,
-            period='daily',
-            start_date=start_date,
-            end_date=end_date,
-        )
+        """获取单个指数的日线数据，返回标准化字段 DataFrame（不写库）
+
+        改用新浪 ak.stock_zh_index_daily（理由同 _fetch_one_stock_daily）。
+        该接口不接受日期范围，会返回全量历史，这里在客户端按区间过滤。
+        """
+        symbol = _ts_code_to_sina_symbol(ts_code)
+        raw = ak.stock_zh_index_daily(symbol=symbol)
         if raw is None or raw.empty:
             return pd.DataFrame()
-        return _normalize_kline_df(raw, ts_code)
+        df = _normalize_sina_daily_df(raw, ts_code)
+        return df[(df['trade_date'] >= start_date) & (df['trade_date'] <= end_date)].reset_index(drop=True)
 
     def fetch_index_daily_batch(self, ts_codes, start_date=None, end_date=None, exchange='SSE'):
         """批量获取多个指数的日线数据（逐个处理）"""
@@ -710,26 +717,39 @@ class DataManager:
             raise
 
 
-def _normalize_kline_df(raw: pd.DataFrame, ts_code: str) -> pd.DataFrame:
+def _normalize_sina_daily_df(raw: pd.DataFrame, ts_code: str) -> pd.DataFrame:
     """
-    把 akshare 返回的 K 线 DataFrame（中文列）标准化为与原 tushare 字段一致的形式。
+    新浪 ak.stock_zh_a_daily / ak.stock_zh_index_daily 返回字段标准化。
 
-    字段单位说明：
-    - akshare 成交量单位为手，与原 tushare daily.vol 一致
-    - akshare 成交额单位为元，原 tushare daily.amount 为千元，这里除以 1000 保持一致
+    新浪原始字段：date, open, high, low, close, volume(股), amount(元),
+                  outstanding_share, turnover  （指数没有 amount）
+    转换后字段对齐数据库 / 原 tushare：
+    - vol 单位手 = volume / 100（个股）；指数直接用 volume（原始单位）
+    - amount 单位千元 = amount / 1000（个股）；指数 amount 缺失 → 0
+    - pre_close / change / pct_chg 由相邻收盘价计算
     """
     df = raw.copy()
-    df['trade_date'] = df['日期'].apply(_normalize_date)
+    df['trade_date'] = df['date'].apply(_normalize_date)
+    df = df.sort_values('trade_date').reset_index(drop=True)
     df['ts_code'] = ts_code
-    df['open'] = pd.to_numeric(df['开盘'], errors='coerce')
-    df['close'] = pd.to_numeric(df['收盘'], errors='coerce')
-    df['high'] = pd.to_numeric(df['最高'], errors='coerce')
-    df['low'] = pd.to_numeric(df['最低'], errors='coerce')
-    df['vol'] = pd.to_numeric(df['成交量'], errors='coerce')
-    df['amount'] = pd.to_numeric(df['成交额'], errors='coerce') / 1000.0
-    df['pct_chg'] = pd.to_numeric(df.get('涨跌幅'), errors='coerce')
-    df['change'] = pd.to_numeric(df.get('涨跌额'), errors='coerce')
-    df['pre_close'] = df['close'] - df['change']
+
+    df['open'] = pd.to_numeric(df['open'], errors='coerce')
+    df['close'] = pd.to_numeric(df['close'], errors='coerce')
+    df['high'] = pd.to_numeric(df['high'], errors='coerce')
+    df['low'] = pd.to_numeric(df['low'], errors='coerce')
+
+    vol_raw = pd.to_numeric(df.get('volume'), errors='coerce')
+    if 'amount' in df.columns:
+        amount_raw = pd.to_numeric(df['amount'], errors='coerce')
+        df['vol'] = vol_raw / 100.0
+        df['amount'] = amount_raw / 1000.0
+    else:
+        df['vol'] = vol_raw
+        df['amount'] = 0.0
+
+    df['pre_close'] = df['close'].shift(1)
+    df['change'] = df['close'] - df['pre_close']
+    df['pct_chg'] = (df['change'] / df['pre_close']) * 100.0
 
     return df[[
         'ts_code', 'trade_date', 'open', 'high', 'low', 'close',
