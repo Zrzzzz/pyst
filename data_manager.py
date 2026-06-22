@@ -4,6 +4,7 @@
 """
 import akshare as ak
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from tqdm import tqdm
 import logger_config  # 必须在导入 logger 之前
@@ -421,12 +422,27 @@ class DataManager:
             trading_days_count = self.count_trading_days(start_date, end_date, exchange)
             logger.info(f"日期范围内交易日数量: {trading_days_count}")
 
+            # 并发抓取 K 线（仅网络/解析），写库仍在主线程串行（SQLAlchemy session 非线程安全）
+            max_workers = 10
             all_data = []
-            with tqdm(total=len(ts_codes), desc="获取股票日线数据", unit="只") as pbar:
-                for ts_code in ts_codes:
-                    try:
-                        df = self._fetch_one_stock_daily(ts_code, start_date, end_date)
+            err_count = 0
 
+            def _safe_fetch(code):
+                try:
+                    return code, self._fetch_one_stock_daily(code, start_date, end_date), None
+                except Exception as e:
+                    return code, None, e
+
+            with tqdm(total=len(ts_codes), desc="获取股票日线数据", unit="只") as pbar:
+                with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                    futures = [ex.submit(_safe_fetch, c) for c in ts_codes]
+                    for fut in as_completed(futures):
+                        code, df, err = fut.result()
+                        if err is not None:
+                            err_count += 1
+                            logger.error(f"获取 {code} 日线数据失败: {err}")
+                            pbar.update(1)
+                            continue
                         if df is None or df.empty:
                             pbar.update(1)
                             continue
@@ -450,16 +466,13 @@ class DataManager:
                         all_data.append(df)
                         pbar.update(1)
 
-                        # 每 100 只提交一次，减少长事务
-                        if len(all_data) % 100 == 0:
+                        # 每 200 只提交一次，减少长事务
+                        if len(all_data) % 200 == 0:
                             self.session.commit()
 
-                    except Exception as one_err:
-                        logger.error(f"获取 {ts_code} 日线数据失败: {one_err}")
-                        pbar.update(1)
-                        continue
-
             self.session.commit()
+            if err_count:
+                logger.warning(f"批量抓取共有 {err_count} 只失败")
 
             if all_data:
                 total_rows = sum(len(df) for df in all_data)
