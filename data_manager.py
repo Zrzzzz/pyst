@@ -7,9 +7,35 @@ import akshare as ak
 import pandas as pd
 from datetime import datetime, timedelta
 from tqdm import tqdm
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 import logger_config  # 必须在导入 logger 之前
 from loguru import logger
 from database import get_session, close_session, StockBasic, StockDailyData, IndexDailyData, TradeCal
+
+
+def _upsert_stock_daily(session, rows):
+    """SQLite upsert：批量 insert，冲突时按列更新。比逐行 merge 快 10-20 倍。"""
+    if not rows:
+        return
+    stmt = sqlite_insert(StockDailyData).values(rows)
+    now = datetime.now()
+    update_cols = {
+        'open': stmt.excluded.open,
+        'high': stmt.excluded.high,
+        'low': stmt.excluded.low,
+        'close': stmt.excluded.close,
+        'pre_close': stmt.excluded.pre_close,
+        'change': stmt.excluded.change,
+        'pct_chg': stmt.excluded.pct_chg,
+        'vol': stmt.excluded.vol,
+        'amount': stmt.excluded.amount,
+        'updated_at': now,
+    }
+    stmt = stmt.on_conflict_do_update(
+        index_elements=['ts_code', 'trade_date'],
+        set_=update_cols,
+    )
+    session.execute(stmt)
 
 
 # ---------- baostock 多进程 worker（必须 top-level 才能被 spawn 子进程 pickle）----------
@@ -493,23 +519,24 @@ class DataManager:
             other_codes = [c for c in ts_codes if c.split('.')[-1].upper() != 'BJ']
             logger.info(f"baostock 多进程拉取 {len(other_codes)} 只沪深股票（{n_proc} 进程），北交所 {len(bj_codes)} 只走新浪")
 
-            def _write_df(df):
-                """主线程写库：把单只 DataFrame 写入数据库"""
-                for _, row in df.iterrows():
-                    daily = StockDailyData(
-                        ts_code=row['ts_code'],
-                        trade_date=row['trade_date'],
-                        open=row['open'],
-                        high=row['high'],
-                        low=row['low'],
-                        close=row['close'],
-                        pre_close=row.get('pre_close'),
-                        change=row.get('change'),
-                        pct_chg=row.get('pct_chg'),
-                        vol=row['vol'],
-                        amount=row['amount'],
-                    )
-                    self.session.merge(daily)
+            # 用 SQLite upsert 批量写库（避免逐行 merge 的 SELECT 开销）
+            UPSERT_BATCH_ROWS = 2000
+            pending_rows = []
+
+            def _flush_rows(force=False):
+                nonlocal pending_rows
+                if not pending_rows:
+                    return
+                if not force and len(pending_rows) < UPSERT_BATCH_ROWS:
+                    return
+                _upsert_stock_daily(self.session, pending_rows)
+                self.session.commit()
+                pending_rows = []
+
+            def _stage_df(df):
+                """把单只 DataFrame 转 dict 加入待写队列；达到阈值就 flush。"""
+                pending_rows.extend(df.to_dict(orient='records'))
+                _flush_rows()
 
             with tqdm(total=len(ts_codes), desc="获取股票日线数据", unit="只") as pbar:
                 if other_codes:
@@ -525,11 +552,9 @@ class DataManager:
                             if df is None or df.empty:
                                 pbar.update(1)
                                 continue
-                            _write_df(df)
+                            _stage_df(df)
                             all_data.append(df)
                             pbar.update(1)
-                            if len(all_data) % 200 == 0:
-                                self.session.commit()
 
                 # 北交所主进程兜底（数量少，串行新浪即可）
                 for ts_code in bj_codes:
@@ -538,14 +563,15 @@ class DataManager:
                         if df is None or df.empty:
                             pbar.update(1)
                             continue
-                        _write_df(df)
+                        _stage_df(df)
                         all_data.append(df)
                     except Exception as one_err:
                         err_count += 1
                         logger.error(f"获取 {ts_code} (新浪) 失败: {one_err}")
                     pbar.update(1)
 
-            self.session.commit()
+                _flush_rows(force=True)
+
             if err_count:
                 logger.warning(f"批量抓取共有 {err_count} 只失败")
 
