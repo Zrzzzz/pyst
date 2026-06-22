@@ -2,9 +2,9 @@
 数据管理模块
 负责从 AKShare 获取股票数据并存储到 SQLite 数据库
 """
-import multiprocessing as mp
 import akshare as ak
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from tqdm import tqdm
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -36,68 +36,6 @@ def _upsert_stock_daily(session, rows):
         set_=update_cols,
     )
     session.execute(stmt)
-
-
-# ---------- baostock 多进程 worker（必须 top-level 才能被 spawn 子进程 pickle）----------
-
-def _bs_worker_init():
-    """每个子进程启动时 login 一次，复用 socket。"""
-    import baostock as bs
-    bs.login()
-
-
-def _bs_worker_fetch(args):
-    """
-    子进程内执行：用 baostock 拉一只股票的 K 线，返回标准化字段 DataFrame。
-
-    返回 (ts_code, df_or_None, err_str_or_None)
-    """
-    ts_code, start_date, end_date = args
-    try:
-        import baostock as bs
-        import pandas as _pd
-
-        parts = ts_code.split('.')
-        if len(parts) != 2:
-            return ts_code, None, f"invalid ts_code: {ts_code}"
-        code, suffix = parts[0], parts[1].lower()
-        if suffix == 'bj':
-            return ts_code, None, 'SKIP_BJ'  # 主进程会用新浪兜底
-        bs_code = f"{suffix}.{code}"
-
-        sd = f"{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]}"
-        ed = f"{end_date[:4]}-{end_date[4:6]}-{end_date[6:8]}"
-        rs = bs.query_history_k_data_plus(
-            bs_code,
-            "date,code,open,high,low,close,preclose,volume,amount,pctChg",
-            start_date=sd, end_date=ed, frequency="d", adjustflag="3",
-        )
-        rows = []
-        while (rs.error_code == "0") and rs.next():
-            rows.append(rs.get_row_data())
-        if rs.error_code != "0":
-            return ts_code, None, f"err={rs.error_code} {rs.error_msg[:80]}"
-        if not rows:
-            return ts_code, None, None
-
-        df = _pd.DataFrame(rows, columns=rs.fields)
-        for col in ['open', 'high', 'low', 'close', 'preclose', 'volume', 'amount', 'pctChg']:
-            df[col] = _pd.to_numeric(df[col], errors='coerce')
-        df['ts_code'] = ts_code
-        df['trade_date'] = df['date'].astype(str).str.replace('-', '', regex=False)
-        df['pre_close'] = df['preclose']
-        df['change'] = df['close'] - df['preclose']
-        df['pct_chg'] = df['pctChg']
-        df['vol'] = df['volume'] / 100.0  # 股 -> 手
-        df['amount'] = df['amount'] / 1000.0  # 元 -> 千元
-
-        out = df[[
-            'ts_code', 'trade_date', 'open', 'high', 'low', 'close',
-            'pre_close', 'change', 'pct_chg', 'vol', 'amount',
-        ]]
-        return ts_code, out, None
-    except Exception as e:
-        return ts_code, None, str(e)
 
 
 # ---------- 工具函数 ----------
@@ -510,14 +448,11 @@ class DataManager:
             trading_days_count = self.count_trading_days(start_date, end_date, exchange)
             logger.info(f"日期范围内交易日数量: {trading_days_count}")
 
-            # baostock 多进程拉沪深股票（库本身是全局 socket，不能多线程，需要多进程隔离）
-            # 北交所 baostock 不支持，单独走新浪
-            n_proc = 16
+            # 新浪 stock_zh_a_daily 走 finance.sina.com.cn，无限流问题，开 30 线程并发
+            max_workers = 30
             all_data = []
             err_count = 0
-            bj_codes = [c for c in ts_codes if c.split('.')[-1].upper() == 'BJ']
-            other_codes = [c for c in ts_codes if c.split('.')[-1].upper() != 'BJ']
-            logger.info(f"baostock 多进程拉取 {len(other_codes)} 只沪深股票（{n_proc} 进程），北交所 {len(bj_codes)} 只走新浪")
+            logger.info(f"新浪并发拉取 {len(ts_codes)} 只股票（{max_workers} 线程）")
 
             # 用 SQLite upsert 批量写库（避免逐行 merge 的 SELECT 开销）
             UPSERT_BATCH_ROWS = 2000
@@ -538,37 +473,28 @@ class DataManager:
                 pending_rows.extend(df.to_dict(orient='records'))
                 _flush_rows()
 
-            with tqdm(total=len(ts_codes), desc="获取股票日线数据", unit="只") as pbar:
-                if other_codes:
-                    ctx = mp.get_context('spawn')
-                    args_iter = [(c, start_date, end_date) for c in other_codes]
-                    with ctx.Pool(processes=n_proc, initializer=_bs_worker_init) as pool:
-                        for ts_code, df, err in pool.imap_unordered(_bs_worker_fetch, args_iter, chunksize=8):
-                            if err is not None and err != 'SKIP_BJ':
-                                err_count += 1
-                                logger.error(f"获取 {ts_code} (baostock) 失败: {err}")
-                                pbar.update(1)
-                                continue
-                            if df is None or df.empty:
-                                pbar.update(1)
-                                continue
-                            _stage_df(df)
-                            all_data.append(df)
-                            pbar.update(1)
+            def _safe_fetch(code):
+                try:
+                    return code, self._fetch_one_stock_daily(code, start_date, end_date), None
+                except Exception as e:
+                    return code, None, str(e)
 
-                # 北交所主进程兜底（数量少，串行新浪即可）
-                for ts_code in bj_codes:
-                    try:
-                        df = self._fetch_one_stock_daily(ts_code, start_date, end_date)
+            with tqdm(total=len(ts_codes), desc="获取股票日线数据", unit="只") as pbar:
+                with ThreadPoolExecutor(max_workers=max_workers) as ex:
+                    futures = [ex.submit(_safe_fetch, c) for c in ts_codes]
+                    for fut in as_completed(futures):
+                        code, df, err = fut.result()
+                        if err is not None:
+                            err_count += 1
+                            logger.error(f"获取 {code} 失败: {err}")
+                            pbar.update(1)
+                            continue
                         if df is None or df.empty:
                             pbar.update(1)
                             continue
                         _stage_df(df)
                         all_data.append(df)
-                    except Exception as one_err:
-                        err_count += 1
-                        logger.error(f"获取 {ts_code} (新浪) 失败: {one_err}")
-                    pbar.update(1)
+                        pbar.update(1)
 
                 _flush_rows(force=True)
 
